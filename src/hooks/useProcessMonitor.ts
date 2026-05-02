@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { onProcessStart, onProcessExit, updateTrayTooltip } from '../services/processService'
 import { useGameStore } from '../store/gameStore'
 import { query, execute } from '../services/database'
@@ -22,6 +22,9 @@ const MIN_SESSION_SECONDS = 60
 export function useProcessMonitor() {
   const [runningGames, setRunningGames] = useState<string[]>([])
   const { games, updateGame, load } = useGameStore()
+  // Use ref to avoid stale closure in async callbacks
+  const runningGamesRef = useRef<string[]>([])
+  runningGamesRef.current = runningGames
 
   const handleProcessStart = useCallback(async (processName: string) => {
     // 从数据库查找对应的游戏
@@ -46,11 +49,6 @@ export function useProcessMonitor() {
       auto_status_prompted: config.auto_status_prompted === 1,
       auto_status_update_enabled: config.auto_status_update_enabled === 1,
     } as Game
-
-    setRunningGames(prev => {
-      if (prev.includes(processName)) return prev
-      return [...prev, processName]
-    })
 
     // 更新数据库 current_running
     await execute(
@@ -93,18 +91,36 @@ export function useProcessMonitor() {
       updateGame(game.id, { current_running: true })
     }
 
-    // 更新托盘提示
-    const runningCount = runningGames.length + 1
+    // 更新托盘提示 (在 setRunningGames 之前调用以避免 stale closure)
+    const alreadyRunning = runningGamesRef.current.includes(processName)
+    const runningCount = alreadyRunning
+      ? runningGamesRef.current.length
+      : runningGamesRef.current.length + 1
     const tooltip = runningCount === 1
       ? `${game.name_cn || game.name} - 运行中`
       : `${runningCount} 个游戏运行中`
     await updateTrayTooltip(tooltip)
 
+    setRunningGames(prev => {
+      if (prev.includes(processName)) return prev
+      return [...prev, processName]
+    })
+
     load()
-  }, [games, runningGames, updateGame, load])
+  }, [games, updateGame, load])
 
   const handleProcessExit = useCallback(async (processName: string) => {
-    setRunningGames(prev => prev.filter(p => p !== processName))
+    // Compute remaining from new state to avoid stale closure
+    let remaining = 0
+    let tooltip = 'GAL Tracker'
+    setRunningGames(prev => {
+      const newRunning = prev.filter(p => p !== processName)
+      remaining = newRunning.length
+      tooltip = remaining === 0
+        ? 'GAL Tracker'
+        : `${remaining} 个游戏运行中`
+      return newRunning
+    })
 
     // 查找对应的游戏和进行中的 session
     const processes = await query<GameProcess>(
@@ -144,15 +160,11 @@ export function useProcessMonitor() {
 
     updateGame(config.game_id, { current_running: false })
 
-    // 更新托盘提示
-    const remaining = runningGames.filter(p => p !== processName).length
-    const tooltip = remaining === 0
-      ? 'GAL Tracker'
-      : `${remaining} 个游戏运行中`
+    // 更新托盘提示 (remaining 和 tooltip 已在 setRunningGames 中计算)
     await updateTrayTooltip(tooltip)
 
     load()
-  }, [runningGames])
+  }, [])
 
   useEffect(() => {
     let unlistenStart: (() => void) | undefined
