@@ -10,6 +10,7 @@ export function setApiKey(key: string) {
 
 function getHeaders(): HeadersInit {
   const headers: HeadersInit = {
+    'Content-Type': 'application/json',
     'User-Agent': 'GAL-Tracker/1.0 (https://github.com/Lil1ac/gal-tracker)',
   }
   if (apiKey) {
@@ -19,8 +20,14 @@ function getHeaders(): HeadersInit {
 }
 
 export async function searchGames(keyword: string): Promise<BangumiSubject[]> {
-  const response = await fetch(`${BASE_URL}/search/subjects?keyword=${encodeURIComponent(keyword)}&type=4&limit=20`, {
+  const response = await fetch(`${BASE_URL}/search/subjects`, {
+    method: 'POST',
     headers: getHeaders(),
+    body: JSON.stringify({
+      keyword,
+      type: 4,
+      limit: 20,
+    }),
   })
   if (!response.ok) throw new Error(`Search failed: ${response.status}`)
   const data = await response.json()
