@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState } from 'react'
 import { Game, Route, Resource } from '../types'
 import { useGameStore } from '../store/gameStore'
 import { ProcessConfig } from './ProcessConfig'
@@ -6,9 +6,11 @@ import { ProcessConfig } from './ProcessConfig'
 interface GameDetailProps {
   game: Game
   onClose: () => void
+  processElapsed: number
+  isProcessRunning: boolean
 }
 
-export function GameDetail({ game, onClose }: GameDetailProps) {
+export function GameDetail({ game, onClose, processElapsed, isProcessRunning }: GameDetailProps) {
   const { updateGame, deleteGame } = useGameStore()
   const [editing, setEditing] = useState(false)
   const [activeTab, setActiveTab] = useState<'info' | 'sessions' | 'routes' | 'resources' | 'processes'>('info')
@@ -20,21 +22,6 @@ export function GameDetail({ game, onClose }: GameDetailProps) {
   const [newResourceType, setNewResourceType] = useState<'link' | 'screenshot'>('link')
   const [newResourceDesc, setNewResourceDesc] = useState('')
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
-  const [elapsedSeconds, setElapsedSeconds] = useState(0)
-
-  const sessionStartRef = useRef<number>(Date.now())
-
-  useEffect(() => {
-    sessionStartRef.current = Date.now()
-    setElapsedSeconds(0)
-
-    if (game.status !== 'playing') return
-
-    const interval = setInterval(() => {
-      setElapsedSeconds(Math.floor((Date.now() - sessionStartRef.current) / 1000))
-    }, 1000)
-    return () => clearInterval(interval)
-  }, [game.id, game.status])
 
   const formatElapsed = (seconds: number) => {
     const h = Math.floor(seconds / 3600)
@@ -116,7 +103,7 @@ export function GameDetail({ game, onClose }: GameDetailProps) {
     }
   }
 
-  const totalMinutes = Math.floor((Date.now() - sessionStartRef.current) / 60000)
+  const totalMinutes = 0
   const hours = Math.floor(totalMinutes / 60)
   const mins = totalMinutes % 60
   const completedRoutes = game.routes.filter(r => r.completed_at).length
@@ -180,7 +167,7 @@ export function GameDetail({ game, onClose }: GameDetailProps) {
         <div className="mt-3 p-3 rounded-lg bg-[var(--bg-primary)] text-center">
           <div className="text-xs text-[var(--text-secondary)]">本次游玩</div>
           <div className="text-xl font-semibold text-[var(--accent)] tabular-nums">
-            {game.status === 'playing' ? formatElapsed(elapsedSeconds) : '--:--'}
+            {isProcessRunning ? formatElapsed(processElapsed) : '--:--'}
           </div>
         </div>
 
@@ -317,7 +304,7 @@ export function GameDetail({ game, onClose }: GameDetailProps) {
             <div className="mb-4 p-4 rounded-lg bg-[var(--bg-primary)] text-center">
               <div className="text-sm text-[var(--text-secondary)]">本次游玩</div>
               <div className="text-2xl font-bold text-[var(--accent)] tabular-nums">
-                {game.status === 'playing' ? formatElapsed(elapsedSeconds) : '--:--'}
+                {isProcessRunning ? formatElapsed(processElapsed) : '--:--'}
               </div>
             </div>
             <p className="text-sm text-[var(--text-secondary)] text-center py-4">游玩记录在 SQLite 数据库中管理</p>

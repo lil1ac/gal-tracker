@@ -35,13 +35,20 @@ pub fn get_configured_processes(state: tauri::State<'_, SharedState>) -> Vec<Pro
 #[command]
 pub async fn save_process_config(
     state: tauri::State<'_, SharedState>,
-    config: ProcessConfig,
+    game_id: String,
+    process_name: String,
+    exe_path: Option<String>,
+    match_type: String,
 ) -> Result<(), String> {
     let mut guard = state.lock().await;
-    // Check if exists, update or add
-    if let Some(existing) = guard.configured_processes.iter_mut().find(|c| c.process_name == config.process_name) {
-        existing.exe_path = config.exe_path;
-        existing.match_type = config.match_type;
+    let config = ProcessConfig {
+        game_id,
+        process_name: process_name.clone(),
+        exe_path,
+        match_type,
+    };
+    if let Some(existing) = guard.configured_processes.iter_mut().find(|c| c.process_name == process_name) {
+        *existing = config;
     } else {
         guard.configured_processes.push(config);
     }

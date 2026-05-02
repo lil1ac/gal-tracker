@@ -1,10 +1,9 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
-import { onProcessStart, onProcessExit, updateTrayTooltip } from '../services/processService'
+import { onProcessStart, onProcessExit, updateTrayTooltip, ProcessEventPayload } from '../services/processService'
 import { useGameStore } from '../store/gameStore'
 import { query, execute } from '../services/database'
 import { Game, GameProcess } from '../types'
 
-// JOIN result type for game_processes + games
 interface GameProcessWithGame extends GameProcess {
   game_id: string
   name: string
@@ -21,27 +20,31 @@ const MIN_SESSION_SECONDS = 60
 
 export function useProcessMonitor() {
   const [runningGames, setRunningGames] = useState<string[]>([])
+  const [activeGameId, setActiveGameId] = useState<string | null>(null)
+  const [elapsed, setElapsed] = useState(0)
   const { games, updateGame, load } = useGameStore()
-  // Use ref to avoid stale closure in async callbacks
   const runningGamesRef = useRef<string[]>([])
   runningGamesRef.current = runningGames
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
-  const handleProcessStart = useCallback(async (processName: string) => {
-    // 从数据库查找对应的游戏
+  const handleProcessStart = useCallback(async (payload: ProcessEventPayload) => {
+    const { game_id, process_name } = payload
+
+    // 从数据库查找对应的游戏（使用 event 中的 game_id）
     const processes = await query<GameProcessWithGame>(
-      `SELECT gp.*, g.id as game_id, g.name, g.name_cn, g.status, g.current_running,
+      `SELECT gp.*, g.name, g.name_cn, g.status, g.current_running,
               g.auto_status_prompted, g.auto_status_update_enabled
        FROM game_processes gp
        JOIN games g ON gp.game_id = g.id
-       WHERE gp.process_name = ? AND gp.enabled = 1`,
-      [processName]
+       WHERE gp.game_id = ? AND gp.enabled = 1`,
+      [game_id]
     )
 
     if (processes.length === 0) return
 
     const config = processes[0]
-    const game = games.find(g => g.id === config.game_id) || {
-      id: config.game_id,
+    const game = games.find(g => g.id === game_id) || {
+      id: game_id,
       name: config.name,
       name_cn: config.name_cn,
       status: config.status,
@@ -51,18 +54,20 @@ export function useProcessMonitor() {
     } as Game
 
     // 更新数据库 current_running
-    await execute(
-      `UPDATE games SET current_running = 1 WHERE id = ?`,
+    await execute(`UPDATE games SET current_running = 1 WHERE id = ?`, [game.id])
+
+    // 创建 play_session (如果还没有进行中的)
+    const activeSessions = await query<{ id: string }>(
+      `SELECT id FROM play_sessions WHERE game_id = ? AND ended_at IS NULL`,
       [game.id]
     )
-
-    // 创建 play_session
-    const sessionId = String(Date.now())
-    await execute(
-      `INSERT INTO play_sessions (id, game_id, process_name, exe_path, started_at, ended_at, duration_seconds, end_reason)
-       VALUES (?, ?, ?, ?, ?, NULL, NULL, NULL)`,
-      [sessionId, game.id, processName, config.exe_path, Date.now()]
-    )
+    if (activeSessions.length === 0) {
+      const sessionId = String(Date.now()) + '_' + Math.random().toString(36).slice(2, 8)
+      await execute(
+        `INSERT INTO play_sessions (id, game_id, process_name, exe_path, started_at) VALUES (?, ?, ?, ?, ?)`,
+        [sessionId, game.id, process_name, config.exe_path, Date.now()]
+      )
+    }
 
     // 首次询问逻辑
     if (!game.auto_status_prompted) {
@@ -91,8 +96,23 @@ export function useProcessMonitor() {
       updateGame(game.id, { current_running: true })
     }
 
-    // 更新托盘提示 (在 setRunningGames 之前调用以避免 stale closure)
-    const alreadyRunning = runningGamesRef.current.includes(processName)
+    // 启动计时器
+    const sessions = await query<{ id: string; started_at: number }>(
+      `SELECT id, started_at FROM play_sessions WHERE game_id = ? AND ended_at IS NULL LIMIT 1`,
+      [game.id]
+    )
+    if (sessions.length > 0) {
+      const session = sessions[0]
+      setActiveGameId(game.id)
+      setElapsed(0)
+      if (intervalRef.current) clearInterval(intervalRef.current)
+      intervalRef.current = setInterval(() => {
+        setElapsed(Math.floor((Date.now() - session.started_at) / 1000))
+      }, 1000)
+    }
+
+    // 更新托盘提示
+    const alreadyRunning = runningGamesRef.current.includes(process_name)
     const runningCount = alreadyRunning
       ? runningGamesRef.current.length
       : runningGamesRef.current.length + 1
@@ -102,42 +122,29 @@ export function useProcessMonitor() {
     await updateTrayTooltip(tooltip)
 
     setRunningGames(prev => {
-      if (prev.includes(processName)) return prev
-      return [...prev, processName]
+      if (prev.includes(process_name)) return prev
+      return [...prev, process_name]
     })
 
     load()
   }, [games, updateGame, load])
 
-  const handleProcessExit = useCallback(async (processName: string) => {
-    // Compute remaining from new state to avoid stale closure
+  const handleProcessExit = useCallback(async (payload: ProcessEventPayload) => {
+    const { game_id, process_name } = payload
+
     let remaining = 0
     let tooltip = 'GAL Tracker'
     setRunningGames(prev => {
-      const newRunning = prev.filter(p => p !== processName)
+      const newRunning = prev.filter(p => p !== process_name)
       remaining = newRunning.length
-      tooltip = remaining === 0
-        ? 'GAL Tracker'
-        : `${remaining} 个游戏运行中`
+      tooltip = remaining === 0 ? 'GAL Tracker' : `${remaining} 个游戏运行中`
       return newRunning
     })
 
-    // 查找对应的游戏和进行中的 session
-    const processes = await query<GameProcess>(
-      `SELECT gp.*, g.id as game_id FROM game_processes gp
-       JOIN games g ON gp.game_id = g.id
-       WHERE gp.process_name = ? AND gp.enabled = 1`,
-      [processName]
-    )
-
-    if (processes.length === 0) return
-
-    const config = processes[0]
-
     // 查找进行中的 session
     const sessions = await query<{ id: string; started_at: number }>(
-      `SELECT id, started_at FROM play_sessions WHERE game_id = ? AND ended_at IS NULL`,
-      [config.game_id]
+      `SELECT id, started_at FROM play_sessions WHERE game_id = ? AND ended_at IS NULL LIMIT 1`,
+      [game_id]
     )
 
     if (sessions.length > 0) {
@@ -152,19 +159,24 @@ export function useProcessMonitor() {
       )
     }
 
+    // 停止计时器
+    if (activeGameId === game_id || activeGameId === null) {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current)
+        intervalRef.current = null
+      }
+      setActiveGameId(null)
+      setElapsed(0)
+    }
+
     // 更新 current_running
-    await execute(
-      `UPDATE games SET current_running = 0 WHERE id = ?`,
-      [config.game_id]
-    )
+    await execute(`UPDATE games SET current_running = 0 WHERE id = ?`, [game_id])
+    updateGame(game_id, { current_running: false })
 
-    updateGame(config.game_id, { current_running: false })
-
-    // 更新托盘提示 (remaining 和 tooltip 已在 setRunningGames 中计算)
     await updateTrayTooltip(tooltip)
 
     load()
-  }, [])
+  }, [activeGameId])
 
   useEffect(() => {
     let unlistenStart: (() => void) | undefined
@@ -176,8 +188,9 @@ export function useProcessMonitor() {
     return () => {
       unlistenStart?.()
       unlistenExit?.()
+      if (intervalRef.current) clearInterval(intervalRef.current)
     }
   }, [handleProcessStart, handleProcessExit])
 
-  return { runningGames }
+  return { runningGames, activeGameId, elapsed }
 }

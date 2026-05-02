@@ -27,14 +27,19 @@ export async function updateTrayTooltip(text: string): Promise<void> {
   return invoke('update_tray_tooltip', { text })
 }
 
-export function onProcessStart(callback: (processName: string) => void): Promise<UnlistenFn> {
-  return listen<string>('process-start', (event) => {
+export interface ProcessEventPayload {
+  game_id: string
+  process_name: string
+}
+
+export function onProcessStart(callback: (payload: ProcessEventPayload) => void): Promise<UnlistenFn> {
+  return listen<ProcessEventPayload>('process-start', (event) => {
     callback(event.payload)
   })
 }
 
-export function onProcessExit(callback: (processName: string) => void): Promise<UnlistenFn> {
-  return listen<string>('process-exit', (event) => {
+export function onProcessExit(callback: (payload: ProcessEventPayload) => void): Promise<UnlistenFn> {
+  return listen<ProcessEventPayload>('process-exit', (event) => {
     callback(event.payload)
   })
 }

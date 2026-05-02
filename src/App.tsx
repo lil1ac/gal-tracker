@@ -10,6 +10,7 @@ import { useGameStore } from './store/gameStore'
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts'
 import { initDatabase } from './services/database'
 import { setApiKey } from './services/bangumiApi'
+import { useProcessMonitor } from './hooks/useProcessMonitor'
 import './styles/themes.css'
 
 function AppContent() {
@@ -17,6 +18,7 @@ function AppContent() {
   const [showSettings, setShowSettings] = useState(false)
   const { load, setSearchQuery, selectedGame, setSelectedGame } = useGameStore()
   const searchInputRef = useRef<HTMLInputElement>(null)
+  const processMonitor = useProcessMonitor()
 
   useEffect(() => {
     const key = localStorage.getItem('bgm_api_key')
@@ -85,7 +87,12 @@ function AppContent() {
         )}
       </div>
       {selectedGame && !showSettings && (
-        <GameDetail game={selectedGame} onClose={() => setSelectedGame(null)} />
+        <GameDetail
+          game={selectedGame}
+          onClose={() => setSelectedGame(null)}
+          processElapsed={processMonitor.activeGameId === selectedGame.id ? processMonitor.elapsed : 0}
+          isProcessRunning={processMonitor.activeGameId === selectedGame.id}
+        />
       )}
       {showSearch && <SearchModal onClose={() => setShowSearch(false)} />}
     </div>

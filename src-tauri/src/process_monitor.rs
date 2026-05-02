@@ -11,9 +11,17 @@ const EXIT_DEBOUNCE_MS: u64 = 5000;
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct ProcessConfig {
+    pub game_id: String,
     pub process_name: String,
     pub exe_path: Option<String>,
     pub match_type: String, // 'process_name' | 'exe_path' | 'name_and_path'
+}
+
+/// Event payloads include game_id so the frontend can match process events to games
+#[derive(Debug, Clone, serde::Serialize)]
+pub struct ProcessEventPayload {
+    pub game_id: String,
+    pub process_name: String,
 }
 
 #[derive(Default)]
@@ -116,8 +124,12 @@ pub fn start(app_handle: AppHandle, state: SharedState, mut stop_rx: tokio::sync
                     // Check if we've reached start debounce threshold
                     let already_emitted = state_guard.process_state.emitted_start.get(&config.process_name).copied().unwrap_or(false);
                     if first_seen.elapsed().as_millis() as u64 >= START_DEBOUNCE_MS && !already_emitted {
-                        // Emit process-start event (once per cycle, until process exits)
-                        let _ = app_handle.emit("process-start", &config.process_name);
+                        // Emit process-start event with game_id
+                        let payload = ProcessEventPayload {
+                            game_id: config.game_id.clone(),
+                            process_name: config.process_name.clone(),
+                        };
+                        let _ = app_handle.emit("process-start", &payload);
                         state_guard.process_state.emitted_start.insert(config.process_name.clone(), true);
                     }
                 } else {
@@ -134,7 +146,11 @@ pub fn start(app_handle: AppHandle, state: SharedState, mut stop_rx: tokio::sync
                         if first_seen_elapsed >= START_DEBOUNCE_MS
                             && last_seen_elapsed >= EXIT_DEBOUNCE_MS
                         {
-                            let _ = app_handle.emit("process-exit", &config.process_name);
+                            let payload = ProcessEventPayload {
+                                game_id: config.game_id.clone(),
+                                process_name: config.process_name.clone(),
+                            };
+                            let _ = app_handle.emit("process-exit", &payload);
                         }
                         // Clear all state when exit debounce completes (regardless of exit event)
                         state_guard.process_state.seen_at.remove(&config.process_name);
