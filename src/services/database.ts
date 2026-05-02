@@ -5,7 +5,7 @@ let db: Database | null = null
 
 export async function initDatabase(): Promise<void> {
   const SQL = await initSqlJs({
-    locateFile: (file: string) => `https://sql.js.org/dist/${file}`,
+    locateFile: (file: string) => `https://unpkg.com/sql.js@1.10.0/dist/${file}`,
   })
   const stored = localStorage.getItem('gal-tracker-db')
   if (stored) {
