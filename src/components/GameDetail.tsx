@@ -23,23 +23,18 @@ export function GameDetail({ game, onClose }: GameDetailProps) {
   const [elapsedSeconds, setElapsedSeconds] = useState(0)
 
   const sessionStartRef = useRef<number>(Date.now())
-  const hasRecordedRef = useRef(false)
 
   useEffect(() => {
     sessionStartRef.current = Date.now()
-    hasRecordedRef.current = false
     setElapsedSeconds(0)
+
+    if (game.status !== 'playing') return
+
     const interval = setInterval(() => {
       setElapsedSeconds(Math.floor((Date.now() - sessionStartRef.current) / 1000))
     }, 1000)
     return () => clearInterval(interval)
-  }, [game.id])
-
-  useEffect(() => {
-    return () => {
-      hasRecordedRef.current = true
-    }
-  }, [game.id])
+  }, [game.id, game.status])
 
   const formatElapsed = (seconds: number) => {
     const h = Math.floor(seconds / 3600)
@@ -184,7 +179,9 @@ export function GameDetail({ game, onClose }: GameDetailProps) {
         {/* Timer */}
         <div className="mt-3 p-3 rounded-lg bg-[var(--bg-primary)] text-center">
           <div className="text-xs text-[var(--text-secondary)]">本次游玩</div>
-          <div className="text-xl font-semibold text-[var(--accent)] tabular-nums">{formatElapsed(elapsedSeconds)}</div>
+          <div className="text-xl font-semibold text-[var(--accent)] tabular-nums">
+            {game.status === 'playing' ? formatElapsed(elapsedSeconds) : '--:--'}
+          </div>
         </div>
 
         <div className="mt-2 flex gap-4 text-xs text-[var(--text-secondary)]">
@@ -319,7 +316,9 @@ export function GameDetail({ game, onClose }: GameDetailProps) {
           <>
             <div className="mb-4 p-4 rounded-lg bg-[var(--bg-primary)] text-center">
               <div className="text-sm text-[var(--text-secondary)]">本次游玩</div>
-              <div className="text-2xl font-bold text-[var(--accent)] tabular-nums">{formatElapsed(elapsedSeconds)}</div>
+              <div className="text-2xl font-bold text-[var(--accent)] tabular-nums">
+                {game.status === 'playing' ? formatElapsed(elapsedSeconds) : '--:--'}
+              </div>
             </div>
             <p className="text-sm text-[var(--text-secondary)] text-center py-4">游玩记录在 SQLite 数据库中管理</p>
           </>
