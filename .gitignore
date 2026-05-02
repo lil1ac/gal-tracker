@@ -2,3 +2,12 @@ node_modules/
 dist/
 .DS_Store
 *.local
+
+# Rust build output
+src-tauri/target/
+
+# Tauri generated files
+src-tauri/gen/
+
+# User settings
+.claude/settings.local.json
