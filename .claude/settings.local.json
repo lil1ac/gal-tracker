@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//d/prog/vibe/gal-tracker-new/**)",
+      "Read(//d/prog/vibe/**)"
+    ],
+    "additionalDirectories": [
+      "D:\\prog\\vibe\\gal-tracker-new"
+    ]
+  }
+}
