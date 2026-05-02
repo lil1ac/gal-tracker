@@ -137,9 +137,9 @@ export function GameDetail({ game, onClose }: GameDetailProps) {
   const routeProgress = game.routes.length > 0 ? `${completedRoutes}/${game.routes.length}` : ''
 
   return (
-    <div className="w-[28rem] border-l border-[var(--border)] bg-[var(--bg-primary)] overflow-y-auto">
-      <div className="p-4 flex justify-between items-center border-b border-[var(--border)]">
-        <h2 className="font-bold text-lg">游戏详情</h2>
+    <div className="w-[28rem] border-l glass overflow-y-auto relative z-10">
+      <div className="p-4 flex justify-between items-center glass">
+        <h2 className="font-bold text-lg neon-text">游戏详情</h2>
         <button onClick={onClose} className="text-2xl hover:opacity-70">&times;</button>
       </div>
 
@@ -176,8 +176,9 @@ export function GameDetail({ game, onClose }: GameDetailProps) {
           ))}
         </div>
 
-        <div className="mt-3 p-2 bg-[var(--accent)] bg-opacity-10 rounded text-center">
-          <span className="text-sm text-[var(--accent)] font-medium">
+        <div className="mt-3 p-3 rounded text-center glass"
+          style={{ border: '1px solid var(--accent)', boxShadow: 'var(--glow-accent)' }}>
+          <span className="text-sm neon-text font-medium">
             本次游玩: {formatElapsed(elapsedSeconds)}
           </span>
         </div>
@@ -190,16 +191,17 @@ export function GameDetail({ game, onClose }: GameDetailProps) {
       </div>
 
       {/* Tabs */}
-      <div className="flex border-b border-[var(--border)]">
+      <div className="flex glass">
         {(['info', 'sessions', 'routes', 'resources', 'processes'] as const).map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
             className={`flex-1 py-2 text-sm transition-colors ${
               activeTab === tab
-                ? 'border-b-2 border-[var(--accent)] text-[var(--accent)]'
+                ? 'border-b-2 text-[var(--accent)]'
                 : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
             }`}
+            style={activeTab === tab ? { borderColor: 'var(--accent)', boxShadow: '0 2px 10px var(--accent)' } : {}}
           >
             {tab === 'info' ? '信息' : tab === 'sessions' ? '游玩' : tab === 'routes' ? `路线${routeProgress ? `(${routeProgress})` : ''}` : tab === 'resources' ? `资源${game.linked_resources.length ? `(${game.linked_resources.length})` : ''}` : '进程'}
           </button>
@@ -345,15 +347,16 @@ export function GameDetail({ game, onClose }: GameDetailProps) {
                   onClick={() => handleToggleRouteComplete(route.id)}
                   className={`p-3 rounded cursor-pointer transition-colors ${
                     route.completed_at
-                      ? 'bg-green-100 dark:bg-green-900 hover:bg-green-200 dark:hover:bg-green-800'
+                      ? 'hover:bg-[var(--accent)]/20'
                       : 'bg-[var(--bg-secondary)] hover:bg-gray-300'
                   }`}
+                  style={route.completed_at ? { background: 'rgba(139, 92, 246, 0.2)' } : {}}
                 >
                   <div className="flex justify-between items-center">
                     <div>
                       <span className={route.completed_at ? 'line-through opacity-70' : ''}>{route.name}</span>
                       {route.completed_at && (
-                        <span className="ml-2 text-green-600 dark:text-green-400 text-sm">✓ 已完成</span>
+                        <span className="ml-2 text-[var(--accent-tertiary)] text-sm">✓ 已完成</span>
                       )}
                     </div>
                     <button
