@@ -56,14 +56,18 @@ Windows 检测到进程运行 (Rust 端 ProcessMonitor)
 CREATE TABLE game_processes (
   id TEXT PRIMARY KEY,
   game_id TEXT NOT NULL,
-  process_name TEXT NOT NULL,          -- 如 "CLANNAD.exe"
-  exe_path TEXT,                       -- 可空，有些进程只能获取进程名
-  match_type TEXT DEFAULT 'process_name',  -- 'process_name' | 'exe_path' | 'name_and_path'
+  process_name TEXT NOT NULL,
+  exe_path TEXT,
+  match_type TEXT DEFAULT 'process_name'
+    CHECK(match_type IN ('process_name', 'exe_path', 'name_and_path')),
   enabled INTEGER DEFAULT 1,
   created_at INTEGER NOT NULL,
   updated_at INTEGER NOT NULL,
-  FOREIGN KEY (game_id) REFERENCES games(id)
+  FOREIGN KEY (game_id) REFERENCES games(id) ON DELETE CASCADE
 );
+
+CREATE INDEX idx_game_processes_game_id ON game_processes(game_id);
+CREATE INDEX idx_game_processes_enabled_process ON game_processes(enabled, process_name);
 ```
 
 | 字段 | 说明 |
@@ -72,6 +76,12 @@ CREATE TABLE game_processes (
 | `exe_path` | 完整路径，可为空（如后台进程无法获取路径时） |
 | `match_type` | 匹配方式：process_name / exe_path / name_and_path |
 | `enabled` | 是否启用检测 |
+
+**约束说明：**
+
+- `game_id` 上有索引，外键设置 ON DELETE CASCADE，删除游戏时自动清理进程配置
+- `enabled + process_name` 组合索引，加速进程匹配查询
+- Windows 下进程名和路径匹配默认大小写不敏感
 
 ### play_sessions 表
 
@@ -84,14 +94,17 @@ CREATE TABLE play_sessions (
   started_at INTEGER NOT NULL,
   ended_at INTEGER,              -- NULL 表示当前正在计时
   duration_seconds INTEGER,
-  end_reason TEXT,              -- 'process_exit' | 'user_stop' | 'app_close' | 'too_short' | 'error'
-  FOREIGN KEY (game_id) REFERENCES games(id)
+  end_reason TEXT,              -- 'process_exit' | 'user_stop' | 'app_close' | 'too_short' | 'error' | 'app_crash'
+  FOREIGN KEY (game_id) REFERENCES games(id),
+  UNIQUE(game_id, ended_at)     -- 确保同一 game_id 同时只有一个 ended_at IS NULL 的会话
 );
 ```
 
 #### 计时规则
 
-**同一 game_id 同一时间只能有一个 ended_at IS NULL 的 play_session。**
+**同一 game_id 同一时间只允许一个 ended_at IS NULL 的 play_session。**
+
+通过 UNIQUE(game_id, ended_at) 约束实现（NULL 值在 SQLite 中不参与 UNIQUE 约束，但可通过触发器辅助验证）。
 
 同一游戏多个进程导致重复计时的情况（需避免）：例如游戏主程序 `CLANNAD.exe` 和启动器 `CLANNAD_launcher.exe` 同时运行，应只创建一条计时记录。
 
@@ -110,7 +123,8 @@ CREATE TABLE play_sessions (
 | `user_stop` | 用户手动停止计时 |
 | `app_close` | 应用关闭时未结束的会话 |
 | `too_short` | 运行时间少于 60 秒 |
-| `error` | 异常结束 |
+| `app_crash` | 应用异常退出（如崩溃、断电），启动时批量处理 |
+| `error` | 其他异常结束 |
 
 ## 流程
 
@@ -118,9 +132,15 @@ CREATE TABLE play_sessions (
 
 ```
 1. UPDATE games SET current_running = false
-2. ProcessMonitor 开始轮询当前进程
-3. TrayManager 初始化系统托盘
+2. 处理历史遗留的 ended_at IS NULL 会话：
+   - end_reason = 'app_crash'
+   - ended_at = now
+   - duration_seconds 计算
+3. ProcessMonitor 开始轮询当前进程
+4. TrayManager 初始化系统托盘
 ```
+
+> **注**：SQLite 中 NULL 值不参与 UNIQUE 约束，上述 UNIQUE(game_id, ended_at) 约束实际通过应用层 + 触发器辅助实现，确保同一 game_id 同时只有一个 ended_at IS NULL 的会话。
 
 ### 检测到进程运行
 
@@ -144,10 +164,21 @@ CREATE TABLE play_sessions (
 
 > "检测到 [游戏名] 正在运行，是否将游玩状态改为'在玩'？"
 
-- **同意** → `auto_status_prompted=true`, `auto_status_update_enabled=true`, `status='playing'`
+- **同意** → `auto_status_prompted=true`, `auto_status_update_enabled=true`
+  - 仅当 status 为空、想玩、搁置等非完成状态时，才自动改为 playing
+  - 已通关状态不会自动覆盖
 - **拒绝** → `auto_status_prompted=true`, `auto_status_update_enabled=false`，不修改 status
 
 后续自动处理，不再询问。
+
+### 防抖机制
+
+进程检测增加防抖，避免瞬间启动/关闭导致频繁状态切换：
+
+| 阶段 | 延迟 | 行为 |
+|------|------|------|
+| 进程出现 | 确认连续存在 3 秒 |才开始计时，避免误检测 |
+| 进程消失 | 延迟 5 秒确认 | 再结束计时，避免游戏切出又切回被中断 |
 
 ### 进程结束
 
