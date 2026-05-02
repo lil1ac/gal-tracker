@@ -1,10 +1,29 @@
 export type GameStatus = 'wish' | 'playing' | 'completed' | 'paused'
 
+export type EndReason = 'process_exit' | 'user_stop' | 'app_close' | 'too_short' | 'error' | 'app_crash'
+
+export type MatchType = 'process_name' | 'exe_path' | 'name_and_path'
+
 export interface PlaySession {
   id: string
-  start_time: number
-  end_time: number | null
-  duration_minutes: number
+  game_id: string
+  process_name: string
+  exe_path: string | null
+  started_at: number        // timestamp ms
+  ended_at: number | null   // timestamp ms, null = 进行中
+  duration_seconds: number | null
+  end_reason: EndReason | null
+}
+
+export interface GameProcess {
+  id: string
+  game_id: string
+  process_name: string      // 如 "CLANNAD.exe"
+  exe_path: string | null
+  match_type: MatchType
+  enabled: boolean
+  created_at: number
+  updated_at: number
 }
 
 export interface Route {
@@ -34,7 +53,9 @@ export interface Game {
   routes: Route[]
   tags: string[]
   linked_resources: Resource[]
-  sessions: PlaySession[]
+  current_running: boolean
+  auto_status_prompted: boolean
+  auto_status_update_enabled: boolean
   created_at: number
   updated_at: number
 }
@@ -46,4 +67,11 @@ export interface BangumiSubject {
   cover: string
   air_date: string | null
   platform: string[]
+}
+
+// 运行中的进程信息
+export interface RunningProcess {
+  pid: number
+  name: string           // "CLANNAD.exe"
+  exe_path: string | null
 }
