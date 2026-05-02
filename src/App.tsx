@@ -13,7 +13,7 @@ import './styles/themes.css'
 function AppContent() {
   const [showSearch, setShowSearch] = useState(false)
   const [apiKey, setApiKeyState] = useState(localStorage.getItem('bgm_api_key') || '')
-  const { load, setSearchQuery } = useGameStore()
+  const { load, setSearchQuery, selectedGame, setSelectedGame } = useGameStore()
 
   useEffect(() => {
     initDatabase().then(load)
@@ -81,6 +81,9 @@ function AppContent() {
         </header>
         <GameList />
       </div>
+      {selectedGame && (
+        <GameDetail game={selectedGame} onClose={() => setSelectedGame(null)} />
+      )}
       {showSearch && <SearchModal onClose={() => setShowSearch(false)} />}
     </div>
   )
