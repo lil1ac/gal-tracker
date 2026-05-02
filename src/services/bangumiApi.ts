@@ -30,8 +30,9 @@ export async function searchGames(keyword: string): Promise<BangumiSubject[]> {
     }),
   })
   if (!response.ok) throw new Error(`Search failed: ${response.status}`)
-  const data = await response.json()
-  return data.map((item: any) => ({
+  const result = await response.json()
+  const items = Array.isArray(result) ? result : (result.data || [])
+  return items.map((item: any) => ({
     id: item.id,
     name: item.name,
     name_cn: item.name_cn || null,
