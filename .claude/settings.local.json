@@ -8,7 +8,10 @@
       "Bash(git add *)",
       "Bash(git commit -m 'fix: replace sql.js with localStorage for MVP *)",
       "Bash(git commit -m 'feat: add Bangumi API key input field *)",
-      "Bash(git commit *)"
+      "Bash(git commit *)",
+      "Bash(rustc --version)",
+      "Bash(cargo --version)",
+      "Bash(npm run *)"
     ]
   }
 }

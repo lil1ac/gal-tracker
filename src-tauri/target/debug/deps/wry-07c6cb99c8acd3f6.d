@@ -1,0 +1,12 @@
+D:\prog\vibe\gal-tracker\src-tauri\target\debug\deps\wry-07c6cb99c8acd3f6.d: C:\Users\zwh\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\wry-0.55.0\src\lib.rs C:\Users\zwh\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\wry-0.55.0\src\custom_protocol_workaround.rs C:\Users\zwh\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\wry-0.55.0\src\error.rs C:\Users\zwh\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\wry-0.55.0\src\proxy.rs C:\Users\zwh\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\wry-0.55.0\src\web_context.rs C:\Users\zwh\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\wry-0.55.0\src\webview2\mod.rs C:\Users\zwh\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\wry-0.55.0\src\webview2\drag_drop.rs C:\Users\zwh\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\wry-0.55.0\src\webview2\util.rs
+
+D:\prog\vibe\gal-tracker\src-tauri\target\debug\deps\libwry-07c6cb99c8acd3f6.rmeta: C:\Users\zwh\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\wry-0.55.0\src\lib.rs C:\Users\zwh\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\wry-0.55.0\src\custom_protocol_workaround.rs C:\Users\zwh\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\wry-0.55.0\src\error.rs C:\Users\zwh\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\wry-0.55.0\src\proxy.rs C:\Users\zwh\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\wry-0.55.0\src\web_context.rs C:\Users\zwh\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\wry-0.55.0\src\webview2\mod.rs C:\Users\zwh\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\wry-0.55.0\src\webview2\drag_drop.rs C:\Users\zwh\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\wry-0.55.0\src\webview2\util.rs
+
+C:\Users\zwh\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\wry-0.55.0\src\lib.rs:
+C:\Users\zwh\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\wry-0.55.0\src\custom_protocol_workaround.rs:
+C:\Users\zwh\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\wry-0.55.0\src\error.rs:
+C:\Users\zwh\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\wry-0.55.0\src\proxy.rs:
+C:\Users\zwh\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\wry-0.55.0\src\web_context.rs:
+C:\Users\zwh\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\wry-0.55.0\src\webview2\mod.rs:
+C:\Users\zwh\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\wry-0.55.0\src\webview2\drag_drop.rs:
+C:\Users\zwh\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\wry-0.55.0\src\webview2\util.rs:
