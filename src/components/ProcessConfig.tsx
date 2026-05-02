@@ -52,67 +52,74 @@ export function ProcessConfig({ game }: ProcessConfigProps) {
 
   
   return (
-    <div className="space-y-4">
-      <div className="flex justify-between items-center">
-        <h3 className="font-bold">进程监控</h3>
-        <button
-          type="button"
-          onClick={() => setShowSelector(true)}
-          className="px-3 py-1 bg-[var(--accent)] text-white rounded text-sm"
-        >
-          添加监控
-        </button>
-      </div>
+    <div className="space-y-4 transition-all duration-300">
+      <div className="glass p-4 rounded-lg transition-all duration-300">
+        <div className="flex justify-between items-center">
+          <h3 className="font-bold text-[var(--text-primary)]">进程监控</h3>
+          <button
+            type="button"
+            onClick={() => setShowSelector(true)}
+            className="neon-button px-3 py-1 text-sm"
+          >
+            添加监控
+          </button>
+        </div>
 
-      {showSelector && (
-        <div className="border rounded">
-          <ProcessSelector
+        {showSelector && (
+          <div className="mt-4 border border-[var(--border)] rounded p-3 bg-[var(--bg-secondary)]/50">
+            <ProcessSelector
               onSelect={handleAddProcess}
               onClose={() => setShowSelector(false)}
               gameName={game.name}
             />
-        </div>
-      )}
+          </div>
+        )}
 
-      {processes.length === 0 ? (
-        <p className="text-sm text-gray-500 text-center py-4">
-          暂无配置的进程
-        </p>
-      ) : (
-        <div className="space-y-2">
-          {processes.map((proc) => (
-            <div
-              key={proc.id}
-              className="p-3 bg-[var(--bg-secondary)] rounded flex justify-between items-center"
-            >
-              <div>
-                <div className="font-medium">{proc.process_name}</div>
-                {proc.exe_path && (
-                  <div className="text-xs text-gray-500 truncate max-w-xs">
-                    {proc.exe_path}
+        {processes.length === 0 ? (
+          <p className="text-sm text-[var(--text-muted)] text-center py-4">
+            暂无配置的进程
+          </p>
+        ) : (
+          <div className="space-y-2 mt-4">
+            {processes.map((proc) => (
+              <div
+                key={proc.id}
+                className="glass p-3 rounded-lg flex justify-between items-center transition-all duration-300"
+              >
+                <div>
+                  <div className="font-medium text-[var(--text-primary)]">{proc.process_name}</div>
+                  {proc.exe_path && (
+                    <div className="text-xs text-[var(--text-muted)] truncate max-w-xs">
+                      {proc.exe_path}
+                    </div>
+                  )}
+                  <div className="text-xs mt-1">
+                    <span className="text-[var(--text-muted)]">匹配方式: </span>
+                    <span className="text-[var(--accent)]">{proc.match_type}</span>
+                    <span className="text-[var(--text-muted)]"> | </span>
+                    <span className={proc.enabled ? 'text-[var(--success)]' : 'text-[var(--error)]'}>
+                      {proc.enabled ? '已启用' : '已禁用'}
+                    </span>
                   </div>
-                )}
-                <div className="text-xs text-gray-400">
-                  匹配方式: {proc.match_type} | {proc.enabled ? '已启用' : '已禁用'}
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => handleDelete(proc.id)}
+                    className={`neon-button px-2 py-1 rounded text-sm ${
+                      confirmDelete === proc.id
+                        ? 'bg-[var(--error)] hover:bg-[var(--error)]/80'
+                        : ''
+                    } transition-all duration-300`}
+                  >
+                    {confirmDelete === proc.id ? '确认' : '删除'}
+                  </button>
                 </div>
               </div>
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => handleDelete(proc.id)}
-                  className={`px-2 py-1 rounded text-sm ${
-                    confirmDelete === proc.id
-                      ? 'bg-red-500 text-white'
-                      : 'text-red-500 hover:bg-red-100'
-                  }`}
-                >
-                  {confirmDelete === proc.id ? '确认' : '删除'}
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   )
 }

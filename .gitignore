@@ -11,3 +11,6 @@ src-tauri/gen/
 
 # User settings
 .claude/settings.local.json
+
+# Worktrees
+.worktrees/
