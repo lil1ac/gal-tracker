@@ -24,8 +24,10 @@ export function Sidebar() {
   }, {} as Record<GameStatus, number>)
 
   return (
-    <div className="w-52 bg-[var(--bg-secondary)] p-4 flex flex-col gap-4">
-      <h1 className="text-xl font-bold text-[var(--accent)]">GAL Tracker</h1>
+    <div className="w-56 glass p-4 flex flex-col gap-4 relative z-10">
+      <h1 className="text-2xl font-bold neon-text" style={{ fontFamily: "'Orbitron', sans-serif" }}>
+      GAL Tracker
+    </h1>
 
       <nav className="flex flex-col gap-1">
         {(Object.keys(statusLabels) as (GameStatus | 'all')[]).map((status) => {
@@ -34,10 +36,10 @@ export function Sidebar() {
             <button
               key={status}
               onClick={() => setFilterStatus(status)}
-              className={`px-3 py-2 rounded text-left flex justify-between items-center ${
+              className={`px-3 py-2 rounded text-left flex justify-between items-center transition-all duration-300 ${
                 filterStatus === status
-                  ? 'bg-[var(--accent)] text-white'
-                  : 'hover:bg-[var(--bg-primary)]'
+                  ? 'glass neon-glow text-[var(--accent)]'
+                  : 'hover:bg-[var(--bg-primary)] hover:text-[var(--accent)]'
               }`}
             >
               <span>{statusLabels[status]}</span>
@@ -47,7 +49,7 @@ export function Sidebar() {
         })}
       </nav>
 
-      <div className="mt-2 p-3 bg-[var(--bg-primary)] rounded">
+      <div className="mt-2 p-3 glass rounded">
         <h2 className="text-sm font-medium mb-2 text-[var(--text-secondary)]">统计</h2>
         <div className="space-y-1 text-sm">
           <div className="flex justify-between">
@@ -73,14 +75,14 @@ export function Sidebar() {
         <button
           type="button"
           onClick={() => setViewMode('card')}
-          className={`flex-1 px-2 py-1 rounded text-sm ${viewMode === 'card' ? 'bg-[var(--accent)] text-white' : ''}`}
+          className={`flex-1 px-2 py-1 rounded text-sm transition-all duration-300 ${viewMode === 'card' ? 'glass neon-glow text-[var(--accent)]' : 'hover:bg-[var(--bg-primary)]'}`}
         >
           卡片
         </button>
         <button
           type="button"
           onClick={() => setViewMode('list')}
-          className={`flex-1 px-2 py-1 rounded text-sm ${viewMode === 'list' ? 'bg-[var(--accent)] text-white' : ''}`}
+          className={`flex-1 px-2 py-1 rounded text-sm transition-all duration-300 ${viewMode === 'list' ? 'glass neon-glow text-[var(--accent)]' : 'hover:bg-[var(--bg-primary)]'}`}
         >
           列表
         </button>
