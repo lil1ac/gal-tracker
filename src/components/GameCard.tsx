@@ -7,12 +7,6 @@ interface GameCardProps {
 
 export function GameCard({ game }: GameCardProps) {
   const { setSelectedGame } = useGameStore()
-  const statusColors = {
-    wish: 'bg-blue-500',
-    playing: 'bg-yellow-500',
-    completed: 'bg-green-500',
-    paused: 'bg-gray-500',
-  }
 
   const totalMinutes = 0 // Sessions stored in SQLite, not on Game object
   const hours = Math.floor(totalMinutes / 60)
