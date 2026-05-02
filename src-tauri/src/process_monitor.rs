@@ -17,8 +17,9 @@ pub struct ProcessConfig {
 }
 
 pub struct ProcessState {
-    pub seen_at: HashMap<String, Instant>,   // process_name -> first_seen
-    pub last_seen: HashMap<String, Instant>, // process_name -> last_seen
+    pub seen_at: HashMap<String, Instant>,       // process_name -> first_seen
+    pub last_seen: HashMap<String, Instant>,    // process_name -> last_seen
+    pub emitted_start: HashMap<String, bool>,   // process_name -> already emitted start event
 }
 
 impl Default for ProcessState {
@@ -26,6 +27,7 @@ impl Default for ProcessState {
         Self {
             seen_at: HashMap::new(),
             last_seen: HashMap::new(),
+            emitted_start: HashMap::new(),
         }
     }
 }
@@ -34,11 +36,17 @@ pub type SharedState = Arc<Mutex<ProcessState>>;
 
 /// Starts the process monitoring loop in a background thread.
 /// Polls sysinfo every second and emits tauri events for process start/exit.
-pub fn start(app_handle: AppHandle, state: SharedState) {
+/// Returns a handle to control the monitor.
+pub fn start(app_handle: AppHandle, state: SharedState, mut stop_rx: tokio::sync::oneshot::Receiver<()>) {
     std::thread::spawn(move || {
         let mut sys = System::new_all();
 
         loop {
+            // Check for shutdown signal
+            if stop_rx.try_recv().is_ok() {
+                break;
+            }
+
             sys.refresh_all();
             let now = Instant::now();
 
@@ -96,9 +104,11 @@ pub fn start(app_handle: AppHandle, state: SharedState) {
                     state_guard.last_seen.insert(config.process_name.clone(), now);
 
                     // Check if we've reached start debounce threshold
-                    if first_seen.elapsed().as_millis() as u64 >= START_DEBOUNCE_MS {
-                        // Emit process-start event (idempotent - only fires once per cycle)
+                    let already_emitted = state_guard.emitted_start.get(&config.process_name).copied().unwrap_or(false);
+                    if first_seen.elapsed().as_millis() as u64 >= START_DEBOUNCE_MS && !already_emitted {
+                        // Emit process-start event (once per cycle, until process exits)
                         let _ = app_handle.emit("process-start", &config.process_name);
+                        state_guard.emitted_start.insert(config.process_name.clone(), true);
                     }
                 } else {
                     // Process not running - check if we need to emit exit
@@ -115,11 +125,10 @@ pub fn start(app_handle: AppHandle, state: SharedState) {
                             && last_seen_elapsed >= EXIT_DEBOUNCE_MS
                         {
                             let _ = app_handle.emit("process-exit", &config.process_name);
-                            state_guard.seen_at.remove(&config.process_name);
-                        } else if first_seen_elapsed < START_DEBOUNCE_MS {
-                            // Process didn't run long enough, clear state without exit event
-                            state_guard.seen_at.remove(&config.process_name);
                         }
+                        // Clear all state when exit debounce completes (regardless of exit event)
+                        state_guard.seen_at.remove(&config.process_name);
+                        state_guard.emitted_start.remove(&config.process_name);
                     }
                 }
             }
@@ -146,5 +155,6 @@ mod tests {
         let state = ProcessState::default();
         assert!(state.seen_at.is_empty());
         assert!(state.last_seen.is_empty());
+        assert!(state.emitted_start.is_empty());
     }
 }
