@@ -1,19 +1,28 @@
 import { BangumiSubject } from '../types'
 
 const BASE_URL = 'https://api.bgm.tv/v0'
-const API_KEY = localStorage.getItem('bgm_api_key') || ''
+
+let apiKey = localStorage.getItem('bgm_api_key') || ''
 
 export function setApiKey(key: string) {
-  localStorage.setItem('bgm_api_key', key)
+  apiKey = key
+}
+
+function getHeaders(): HeadersInit {
+  const headers: HeadersInit = {
+    'User-Agent': 'GAL-Tracker/1.0 (https://github.com/Lil1ac/gal-tracker)',
+  }
+  if (apiKey) {
+    headers['Authorization'] = `Bearer ${apiKey}`
+  }
+  return headers
 }
 
 export async function searchGames(keyword: string): Promise<BangumiSubject[]> {
-  const headers: HeadersInit = {}
-  if (API_KEY) {
-    headers['Authorization'] = `Bearer ${API_KEY}`
-  }
-  const response = await fetch(`${BASE_URL}/search/subjects?keyword=${encodeURIComponent(keyword)}&type=4&limit=20`, { headers })
-  if (!response.ok) throw new Error('Search failed')
+  const response = await fetch(`${BASE_URL}/search/subjects?keyword=${encodeURIComponent(keyword)}&type=4&limit=20`, {
+    headers: getHeaders(),
+  })
+  if (!response.ok) throw new Error(`Search failed: ${response.status}`)
   const data = await response.json()
   return data.map((item: any) => ({
     id: item.id,
@@ -26,11 +35,9 @@ export async function searchGames(keyword: string): Promise<BangumiSubject[]> {
 }
 
 export async function getGameDetails(id: number): Promise<BangumiSubject> {
-  const headers: HeadersInit = {}
-  if (API_KEY) {
-    headers['Authorization'] = `Bearer ${API_KEY}`
-  }
-  const response = await fetch(`${BASE_URL}/subjects/${id}`, { headers })
+  const response = await fetch(`${BASE_URL}/subjects/${id}`, {
+    headers: getHeaders(),
+  })
   if (!response.ok) throw new Error('Failed to get details')
   const data = await response.json()
   return {

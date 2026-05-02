@@ -7,7 +7,8 @@
       "Bash(git push *)",
       "Bash(git add *)",
       "Bash(git commit -m 'fix: replace sql.js with localStorage for MVP *)",
-      "Bash(git commit -m 'feat: add Bangumi API key input field *)"
+      "Bash(git commit -m 'feat: add Bangumi API key input field *)",
+      "Bash(git commit *)"
     ]
   }
 }
