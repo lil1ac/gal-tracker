@@ -66,7 +66,11 @@ export function ProcessConfig({ game }: ProcessConfigProps) {
 
       {showSelector && (
         <div className="border rounded">
-          <ProcessSelector onSelect={handleAddProcess} onClose={() => setShowSelector(false)} />
+          <ProcessSelector
+              onSelect={handleAddProcess}
+              onClose={() => setShowSelector(false)}
+              gameName={game.name}
+            />
         </div>
       )}
 
