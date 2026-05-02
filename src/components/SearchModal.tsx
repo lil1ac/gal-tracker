@@ -50,8 +50,8 @@ export function SearchModal({ onClose }: SearchModalProps) {
   }
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-[var(--bg-primary)] rounded-lg w-[600px] max-h-[80vh] flex flex-col">
+    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50">
+      <div className="glass rounded-lg w-[600px] max-h-[80vh] flex flex-col neon-glow">
         <div className="p-4 border-b border-[var(--border)] flex gap-2">
           <input
             type="text"
@@ -59,12 +59,21 @@ export function SearchModal({ onClose }: SearchModalProps) {
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
             placeholder="搜索游戏..."
-            className="flex-1 px-3 py-2 rounded border border-[var(--border)] bg-[var(--bg-secondary)]"
+            className="flex-1 px-4 py-2 rounded glass text-[var(--text-primary)] border border-[var(--border)] focus:border-[var(--accent)] focus:outline-none transition-all duration-300"
+            style={{ background: 'var(--bg-secondary)' }}
+            onFocus={(e) => {
+              e.target.style.borderColor = 'var(--accent)'
+              e.target.style.boxShadow = 'var(--glow-accent)'
+            }}
+            onBlur={(e) => {
+              e.target.style.borderColor = 'var(--border)'
+              e.target.style.boxShadow = 'none'
+            }}
           />
-          <button onClick={handleSearch} className="px-4 py-2 bg-[var(--accent)] text-white rounded">
+          <button onClick={handleSearch} className="neon-button px-4 py-2 rounded font-bold text-[#0a0a0f] transition-all" style={{ background: 'var(--accent)', boxShadow: 'var(--glow-accent)' }}>
             搜索
           </button>
-          <button onClick={onClose} className="px-4 py-2 rounded">关闭</button>
+          <button onClick={onClose} className="neon-button px-4 py-2 rounded transition-all">关闭</button>
         </div>
         <div className="flex-1 overflow-y-auto p-4">
           {loading && <div className="text-center py-8">搜索中...</div>}
@@ -72,7 +81,7 @@ export function SearchModal({ onClose }: SearchModalProps) {
             <div
               key={subject.id}
               onClick={() => handleAddGame(subject)}
-              className="flex gap-3 p-3 hover:bg-[var(--bg-secondary)] rounded cursor-pointer"
+              className="flex gap-3 p-3 glass hover:bg-[var(--bg-secondary)] rounded cursor-pointer"
             >
               <img src={subject.cover} alt="" className="w-16 h-20 object-cover rounded" />
               <div>
