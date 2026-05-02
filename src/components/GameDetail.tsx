@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { Game, PlaySession, Route, Resource } from '../types'
 import { useGameStore } from '../store/gameStore'
+import { ProcessConfig } from './ProcessConfig'
 
 interface GameDetailProps {
   game: Game
@@ -10,7 +11,7 @@ interface GameDetailProps {
 export function GameDetail({ game, onClose }: GameDetailProps) {
   const { updateGame, deleteGame } = useGameStore()
   const [editing, setEditing] = useState(false)
-  const [activeTab, setActiveTab] = useState<'info' | 'sessions' | 'routes' | 'resources'>('info')
+  const [activeTab, setActiveTab] = useState<'info' | 'sessions' | 'routes' | 'resources' | 'processes'>('info')
   const [rating, setRating] = useState(game.rating || 5)
   const [review, setReview] = useState(game.review || '')
   const [tags, setTags] = useState(game.tags.join(', '))
@@ -211,7 +212,7 @@ export function GameDetail({ game, onClose }: GameDetailProps) {
 
       {/* Tabs */}
       <div className="flex border-b border-[var(--border)]">
-        {(['info', 'sessions', 'routes', 'resources'] as const).map((tab) => (
+        {(['info', 'sessions', 'routes', 'resources', 'processes'] as const).map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
@@ -221,7 +222,7 @@ export function GameDetail({ game, onClose }: GameDetailProps) {
                 : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
             }`}
           >
-            {tab === 'info' ? '信息' : tab === 'sessions' ? `游玩${game.sessions.length ? `(${game.sessions.length})` : ''}` : tab === 'routes' ? `路线${routeProgress ? `(${routeProgress})` : ''}` : `资源${game.linked_resources.length ? `(${game.linked_resources.length})` : ''}`}
+            {tab === 'info' ? '信息' : tab === 'sessions' ? `游玩${game.sessions.length ? `(${game.sessions.length})` : ''}` : tab === 'routes' ? `路线${routeProgress ? `(${routeProgress})` : ''}` : tab === 'resources' ? `资源${game.linked_resources.length ? `(${game.linked_resources.length})` : ''}` : '进程'}
           </button>
         ))}
       </div>
@@ -479,6 +480,9 @@ export function GameDetail({ game, onClose }: GameDetailProps) {
               ))}
             </div>
           </>
+        )}
+        {activeTab === 'processes' && (
+          <ProcessConfig game={game} />
         )}
       </div>
     </div>
