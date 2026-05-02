@@ -22,28 +22,21 @@ export function GameDetail({ game, onClose }: GameDetailProps) {
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
   const [elapsedSeconds, setElapsedSeconds] = useState(0)
 
-  // Auto playtime tracking
   const sessionStartRef = useRef<number>(Date.now())
   const hasRecordedRef = useRef(false)
 
   useEffect(() => {
-    // Reset timer when game changes
     sessionStartRef.current = Date.now()
     hasRecordedRef.current = false
     setElapsedSeconds(0)
-
-    // Update elapsed time every second
     const interval = setInterval(() => {
       setElapsedSeconds(Math.floor((Date.now() - sessionStartRef.current) / 1000))
     }, 1000)
-
     return () => clearInterval(interval)
   }, [game.id])
 
-  // Record time when component unmounts or game changes
   useEffect(() => {
     return () => {
-      // Session recording now handled by process_monitor - no need to track here
       hasRecordedRef.current = true
     }
   }, [game.id])
@@ -52,9 +45,7 @@ export function GameDetail({ game, onClose }: GameDetailProps) {
     const h = Math.floor(seconds / 3600)
     const m = Math.floor((seconds % 3600) / 60)
     const s = seconds % 60
-    if (h > 0) {
-      return `${h}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`
-    }
+    if (h > 0) return `${h}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`
     return `${m}:${s.toString().padStart(2, '0')}`
   }
 
@@ -136,39 +127,53 @@ export function GameDetail({ game, onClose }: GameDetailProps) {
   const completedRoutes = game.routes.filter(r => r.completed_at).length
   const routeProgress = game.routes.length > 0 ? `${completedRoutes}/${game.routes.length}` : ''
 
+  const tabItems = [
+    { key: 'info' as const, label: '信息' },
+    { key: 'sessions' as const, label: '游玩' },
+    { key: 'routes' as const, label: routeProgress ? `路线 (${routeProgress})` : '路线' },
+    { key: 'resources' as const, label: game.linked_resources.length ? `资源 (${game.linked_resources.length})` : '资源' },
+    { key: 'processes' as const, label: '进程' },
+  ]
+
   return (
-    <div className="w-[28rem] border-l glass overflow-y-auto relative z-10">
-      <div className="p-4 flex justify-between items-center glass">
-        <h2 className="font-bold text-lg neon-text">游戏详情</h2>
-        <button onClick={onClose} className="text-2xl hover:opacity-70">&times;</button>
+    <div className="w-[28rem] bg-[var(--bg-secondary)] border-l border-[var(--border)] overflow-y-auto flex flex-col shrink-0">
+      {/* Header */}
+      <div className="p-4 flex justify-between items-center border-b border-[var(--border)]">
+        <h2 className="font-semibold">游戏详情</h2>
+        <button onClick={onClose} className="w-7 h-7 flex items-center justify-center rounded hover:bg-[var(--bg-primary)] transition-colors text-lg leading-none">&times;</button>
       </div>
 
-      <div className="aspect-[3/4] bg-gray-200 relative">
-        {game.cover_url && <img src={game.cover_url} alt={game.name} className="w-full h-full object-cover" />}
+      {/* Cover */}
+      <div className="aspect-[3/4] bg-[var(--bg-primary)]">
+        {game.cover_url ? (
+          <img src={game.cover_url} alt={game.name} className="w-full h-full object-cover" />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center text-[var(--text-secondary)]">无封面</div>
+        )}
       </div>
 
-      <div className="p-4">
-        <h3 className="font-bold">{game.name_cn || game.name}</h3>
-        <p className="text-sm text-[var(--text-secondary)]">{game.name}</p>
+      {/* Info */}
+      <div className="p-4 border-b border-[var(--border)]">
+        <h3 className="font-semibold text-lg">{game.name_cn || game.name}</h3>
+        {game.name_cn && <p className="text-sm text-[var(--text-secondary)]">{game.name}</p>}
 
-        {game.platform.length > 0 && (
-          <p className="text-xs text-[var(--text-secondary)] mt-1">
-            平台: {game.platform.join(', ')}
-          </p>
+        {game.platform && game.platform.length > 0 && (
+          <p className="text-xs text-[var(--text-secondary)] mt-1">平台: {game.platform.join(', ')}</p>
         )}
         {game.air_date && (
-          <p className="text-xs text-[var(--text-secondary)]">
-            发售日: {game.air_date}
-          </p>
+          <p className="text-xs text-[var(--text-secondary)]">发售日: {game.air_date}</p>
         )}
 
-        <div className="mt-3 flex gap-2 flex-wrap">
+        {/* Status buttons */}
+        <div className="mt-3 flex gap-1.5">
           {(['wish', 'playing', 'completed', 'paused'] as const).map((status) => (
             <button
               key={status}
               onClick={() => updateGame(game.id, { status })}
-              className={`px-2 py-1 rounded text-sm transition-colors ${
-                game.status === status ? 'bg-[var(--accent)] text-white' : 'bg-[var(--bg-secondary)] hover:bg-gray-300'
+              className={`px-2.5 py-1 rounded text-xs font-medium transition-colors ${
+                game.status === status
+                  ? 'bg-[var(--accent)] text-white'
+                  : 'bg-[var(--bg-primary)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
               }`}
             >
               {status === 'wish' ? '想玩' : status === 'playing' ? '在玩' : status === 'completed' ? '已完成' : '搁置'}
@@ -176,14 +181,13 @@ export function GameDetail({ game, onClose }: GameDetailProps) {
           ))}
         </div>
 
-        <div className="mt-3 p-3 rounded text-center glass"
-          style={{ border: '1px solid var(--accent)', boxShadow: 'var(--glow-accent)' }}>
-          <span className="text-sm neon-text font-medium">
-            本次游玩: {formatElapsed(elapsedSeconds)}
-          </span>
+        {/* Timer */}
+        <div className="mt-3 p-3 rounded-lg bg-[var(--bg-primary)] text-center">
+          <div className="text-xs text-[var(--text-secondary)]">本次游玩</div>
+          <div className="text-xl font-semibold text-[var(--accent)] tabular-nums">{formatElapsed(elapsedSeconds)}</div>
         </div>
 
-        <div className="mt-3 flex gap-4 text-sm text-[var(--text-secondary)]">
+        <div className="mt-2 flex gap-4 text-xs text-[var(--text-secondary)]">
           <span>总时长: {hours > 0 ? `${hours}小时${mins > 0 ? `${mins}分钟` : ''}` : mins > 0 ? `${mins}分钟` : '暂无'}</span>
           {routeProgress && <span>路线: {routeProgress}</span>}
           <span>评分: {game.rating ? `★ ${game.rating}` : '-'}</span>
@@ -191,24 +195,27 @@ export function GameDetail({ game, onClose }: GameDetailProps) {
       </div>
 
       {/* Tabs */}
-      <div className="flex glass">
-        {(['info', 'sessions', 'routes', 'resources', 'processes'] as const).map((tab) => (
+      <div className="flex border-b border-[var(--border)]">
+        {tabItems.map((tab) => (
           <button
-            key={tab}
-            onClick={() => setActiveTab(tab)}
-            className={`flex-1 py-2 text-sm transition-colors ${
-              activeTab === tab
-                ? 'border-b-2 text-[var(--accent)]'
+            key={tab.key}
+            onClick={() => setActiveTab(tab.key)}
+            className={`flex-1 py-2.5 text-xs font-medium transition-colors relative ${
+              activeTab === tab.key
+                ? 'text-[var(--accent)]'
                 : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
             }`}
-            style={activeTab === tab ? { borderColor: 'var(--accent)', boxShadow: '0 2px 10px var(--accent)' } : {}}
           >
-            {tab === 'info' ? '信息' : tab === 'sessions' ? '游玩' : tab === 'routes' ? `路线${routeProgress ? `(${routeProgress})` : ''}` : tab === 'resources' ? `资源${game.linked_resources.length ? `(${game.linked_resources.length})` : ''}` : '进程'}
+            {tab.label}
+            {activeTab === tab.key && (
+              <div className="absolute bottom-0 left-1/4 right-1/4 h-0.5 bg-[var(--accent)] rounded-full" />
+            )}
           </button>
         ))}
       </div>
 
-      <div className="p-4">
+      {/* Tab Content */}
+      <div className="p-4 flex-1">
         {activeTab === 'info' && (
           <>
             {editing ? (
@@ -216,7 +223,7 @@ export function GameDetail({ game, onClose }: GameDetailProps) {
                 <div>
                   <label className="text-sm flex justify-between">
                     <span>评分</span>
-                    <span className="font-bold">{rating}</span>
+                    <span className="font-semibold">{rating}</span>
                   </label>
                   <input
                     type="range"
@@ -228,29 +235,29 @@ export function GameDetail({ game, onClose }: GameDetailProps) {
                   />
                 </div>
                 <div>
-                  <label className="text-sm">感想</label>
+                  <label className="text-sm text-[var(--text-secondary)]">感想</label>
                   <textarea
                     value={review}
                     onChange={(e) => setReview(e.target.value)}
-                    className="w-full h-24 p-2 rounded border border-[var(--border)] bg-[var(--bg-secondary)] resize-none"
+                    className="w-full h-24 p-2 rounded-md border border-[var(--border)] bg-[var(--bg-primary)] text-sm resize-none focus:border-[var(--accent)] focus:outline-none"
                     placeholder="写点感想..."
                   />
                 </div>
                 <div>
-                  <label className="text-sm">标签 (逗号分隔)</label>
+                  <label className="text-sm text-[var(--text-secondary)]">标签 (逗号分隔)</label>
                   <input
                     type="text"
                     value={tags}
                     onChange={(e) => setTags(e.target.value)}
-                    className="w-full p-2 rounded border border-[var(--border)] bg-[var(--bg-secondary)]"
+                    className="w-full p-2 rounded-md border border-[var(--border)] bg-[var(--bg-primary)] text-sm focus:border-[var(--accent)] focus:outline-none"
                     placeholder="神作, 恋爱, 治愈"
                   />
                 </div>
                 <div className="flex gap-2">
-                  <button type="button" onClick={handleSaveInfo} className="flex-1 py-2 bg-[var(--accent)] text-white rounded">
+                  <button type="button" onClick={handleSaveInfo} className="flex-1 py-2 bg-[var(--accent)] text-white rounded-md text-sm font-medium hover:bg-[var(--accent-hover)] transition-colors">
                     保存
                   </button>
-                  <button type="button" onClick={() => setEditing(false)} className="flex-1 py-2 bg-[var(--bg-secondary)] rounded">
+                  <button type="button" onClick={() => setEditing(false)} className="flex-1 py-2 bg-[var(--bg-primary)] rounded-md text-sm hover:bg-[var(--border)] transition-colors">
                     取消
                   </button>
                 </div>
@@ -260,13 +267,15 @@ export function GameDetail({ game, onClose }: GameDetailProps) {
                 <button
                   type="button"
                   onClick={() => setEditing(true)}
-                  className="w-full py-2 bg-[var(--bg-secondary)] rounded hover:bg-gray-300 transition-colors"
+                  className="w-full py-2 rounded-md border border-[var(--border)] text-sm hover:bg-[var(--bg-primary)] transition-colors"
                 >
                   编辑信息
                 </button>
                 {game.rating && (
                   <div className="mt-4">
-                    <p className="text-sm text-[var(--text-secondary)]">评分: <span className="font-bold">★ {game.rating}/10</span></p>
+                    <p className="text-sm text-[var(--text-secondary)]">
+                      评分: <span className="font-semibold text-[var(--text-primary)]">★ {game.rating}/10</span>
+                    </p>
                   </div>
                 )}
                 {game.review && (
@@ -275,9 +284,9 @@ export function GameDetail({ game, onClose }: GameDetailProps) {
                   </div>
                 )}
                 {game.tags.length > 0 && (
-                  <div className="mt-2 flex gap-1 flex-wrap">
+                  <div className="mt-3 flex gap-1.5 flex-wrap">
                     {game.tags.map((tag) => (
-                      <span key={tag} className="px-2 py-1 bg-[var(--accent)] text-white text-xs rounded">
+                      <span key={tag} className="px-2 py-0.5 bg-[var(--accent-soft)] text-[var(--accent)] text-xs rounded-full font-medium">
                         {tag}
                       </span>
                     ))}
@@ -288,16 +297,16 @@ export function GameDetail({ game, onClose }: GameDetailProps) {
 
             <div className="mt-6 pt-4 border-t border-[var(--border)]">
               {confirmDelete === 'game' ? (
-                <div className="flex gap-2">
-                  <span className="flex-1 text-sm text-red-500">确认删除游戏?</span>
-                  <button type="button" onClick={handleDeleteGame} className="px-3 py-1 bg-red-500 text-white rounded text-sm">删除</button>
-                  <button type="button" onClick={() => setConfirmDelete(null)} className="px-3 py-1 bg-[var(--bg-secondary)] rounded text-sm">取消</button>
+                <div className="flex items-center gap-2">
+                  <span className="flex-1 text-sm text-red-600">确认删除游戏？此操作不可撤销</span>
+                  <button type="button" onClick={handleDeleteGame} className="px-3 py-1 bg-red-600 text-white rounded text-sm">删除</button>
+                  <button type="button" onClick={() => setConfirmDelete(null)} className="px-3 py-1 border border-[var(--border)] rounded text-sm">取消</button>
                 </div>
               ) : (
                 <button
                   type="button"
                   onClick={handleDeleteGame}
-                  className="w-full py-2 text-red-500 border border-red-500 rounded hover:bg-red-50 transition-colors"
+                  className="w-full py-2 text-red-600 border border-red-300 rounded-md text-sm hover:bg-red-50 dark:hover:bg-red-950 transition-colors"
                 >
                   删除游戏
                 </button>
@@ -308,13 +317,11 @@ export function GameDetail({ game, onClose }: GameDetailProps) {
 
         {activeTab === 'sessions' && (
           <>
-            <div className="mb-4 p-3 bg-[var(--bg-secondary)] rounded text-center">
+            <div className="mb-4 p-4 rounded-lg bg-[var(--bg-primary)] text-center">
               <div className="text-sm text-[var(--text-secondary)]">本次游玩</div>
-              <div className="text-2xl font-bold text-[var(--accent)]">{formatElapsed(elapsedSeconds)}</div>
+              <div className="text-2xl font-bold text-[var(--accent)] tabular-nums">{formatElapsed(elapsedSeconds)}</div>
             </div>
-            <div className="space-y-2">
-              <p className="text-sm text-[var(--text-secondary)] text-center py-4">游玩记录在 SQLite 数据库中管理</p>
-            </div>
+            <p className="text-sm text-[var(--text-secondary)] text-center py-4">游玩记录在 SQLite 数据库中管理</p>
           </>
         )}
 
@@ -326,18 +333,18 @@ export function GameDetail({ game, onClose }: GameDetailProps) {
                 value={newRouteName}
                 onChange={(e) => setNewRouteName(e.target.value)}
                 placeholder="路线名称"
-                className="flex-1 p-2 rounded border border-[var(--border)] bg-[var(--bg-secondary)]"
+                className="flex-1 p-2 rounded-md border border-[var(--border)] bg-[var(--bg-primary)] text-sm focus:border-[var(--accent)] focus:outline-none"
                 onKeyDown={(e) => e.key === 'Enter' && handleAddRoute()}
               />
               <button
                 type="button"
                 onClick={handleAddRoute}
-                className="px-4 py-2 bg-[var(--accent)] text-white rounded hover:opacity-80 transition-opacity"
+                className="px-4 py-2 bg-[var(--accent)] text-white rounded-md text-sm font-medium hover:bg-[var(--accent-hover)] transition-colors"
               >
                 添加
               </button>
             </div>
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               {game.routes.length === 0 && (
                 <p className="text-sm text-[var(--text-secondary)] text-center py-8">暂无路线记录</p>
               )}
@@ -345,24 +352,29 @@ export function GameDetail({ game, onClose }: GameDetailProps) {
                 <div
                   key={route.id}
                   onClick={() => handleToggleRouteComplete(route.id)}
-                  className={`p-3 rounded cursor-pointer transition-colors ${
+                  className={`p-3 rounded-md cursor-pointer transition-colors ${
                     route.completed_at
-                      ? 'hover:bg-[var(--accent)]/20'
-                      : 'bg-[var(--bg-secondary)] hover:bg-gray-300'
+                      ? 'bg-emerald-50 dark:bg-emerald-950'
+                      : 'bg-[var(--bg-primary)] hover:bg-[var(--border)]'
                   }`}
-                  style={route.completed_at ? { background: 'rgba(139, 92, 246, 0.2)' } : {}}
                 >
                   <div className="flex justify-between items-center">
-                    <div>
-                      <span className={route.completed_at ? 'line-through opacity-70' : ''}>{route.name}</span>
+                    <div className="flex items-center gap-2">
+                      <span className={route.completed_at ? 'line-through text-[var(--text-secondary)]' : ''}>
+                        {route.name}
+                      </span>
                       {route.completed_at && (
-                        <span className="ml-2 text-[var(--accent-tertiary)] text-sm">✓ 已完成</span>
+                        <span className="text-emerald-600 dark:text-emerald-400 text-xs font-medium">✓ 已完成</span>
                       )}
                     </div>
                     <button
                       type="button"
                       onClick={(e) => handleDeleteRoute(route.id, e)}
-                      className={`px-2 py-1 rounded text-sm ${confirmDelete === route.id ? 'bg-red-500 text-white' : 'text-red-500 hover:bg-red-100'}`}
+                      className={`px-2 py-0.5 rounded text-xs transition-colors ${
+                        confirmDelete === route.id
+                          ? 'bg-red-600 text-white'
+                          : 'text-red-500 hover:bg-red-50 dark:hover:bg-red-950'
+                      }`}
                     >
                       {confirmDelete === route.id ? '确认' : '删除'}
                     </button>
@@ -371,11 +383,11 @@ export function GameDetail({ game, onClose }: GameDetailProps) {
               ))}
             </div>
             {game.routes.length > 0 && (
-              <div className="mt-4 text-center text-sm text-[var(--text-secondary)]">
+              <div className="mt-4 text-center text-xs text-[var(--text-secondary)]">
                 完成进度: {completedRoutes}/{game.routes.length}
-                <div className="w-full h-2 bg-[var(--bg-secondary)] rounded-full mt-1">
+                <div className="w-full h-1.5 bg-[var(--bg-primary)] rounded-full mt-1.5 overflow-hidden">
                   <div
-                    className="h-full bg-green-500 rounded-full transition-all"
+                    className="h-full bg-emerald-500 rounded-full transition-all duration-300"
                     style={{ width: `${(completedRoutes / game.routes.length) * 100}%` }}
                   />
                 </div>
@@ -391,7 +403,7 @@ export function GameDetail({ game, onClose }: GameDetailProps) {
                 title="资源类型"
                 value={newResourceType}
                 onChange={(e) => setNewResourceType(e.target.value as 'link' | 'screenshot')}
-                className="w-full p-2 rounded border border-[var(--border)] bg-[var(--bg-secondary)]"
+                className="w-full p-2 rounded-md border border-[var(--border)] bg-[var(--bg-primary)] text-sm"
               >
                 <option value="link">链接</option>
                 <option value="screenshot">截图</option>
@@ -401,48 +413,52 @@ export function GameDetail({ game, onClose }: GameDetailProps) {
                 value={newResourceUrl}
                 onChange={(e) => setNewResourceUrl(e.target.value)}
                 placeholder={newResourceType === 'link' ? '攻略链接 URL' : '截图路径'}
-                className="w-full p-2 rounded border border-[var(--border)] bg-[var(--bg-secondary)]"
+                className="w-full p-2 rounded-md border border-[var(--border)] bg-[var(--bg-primary)] text-sm focus:border-[var(--accent)] focus:outline-none"
               />
               <input
                 type="text"
                 value={newResourceDesc}
                 onChange={(e) => setNewResourceDesc(e.target.value)}
                 placeholder="描述 (可选)"
-                className="w-full p-2 rounded border border-[var(--border)] bg-[var(--bg-secondary)]"
+                className="w-full p-2 rounded-md border border-[var(--border)] bg-[var(--bg-primary)] text-sm focus:border-[var(--accent)] focus:outline-none"
               />
               <button
                 type="button"
                 onClick={handleAddResource}
-                className="w-full py-2 bg-[var(--accent)] text-white rounded hover:opacity-80 transition-opacity"
+                className="w-full py-2 bg-[var(--accent)] text-white rounded-md text-sm font-medium hover:bg-[var(--accent-hover)] transition-colors"
               >
                 添加
               </button>
             </div>
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               {game.linked_resources.length === 0 && (
                 <p className="text-sm text-[var(--text-secondary)] text-center py-8">暂无关联资源</p>
               )}
               {game.linked_resources.map((resource) => (
-                <div key={resource.id} className="flex justify-between items-center p-3 bg-[var(--bg-secondary)] rounded">
+                <div key={resource.id} className="flex justify-between items-center p-3 rounded-md bg-[var(--bg-primary)]">
                   <div className="flex-1 min-w-0">
-                    <div className="text-sm truncate font-medium">{resource.description || resource.url}</div>
+                    <div className="text-sm truncate">{resource.description || resource.url}</div>
                     <div className="text-xs text-[var(--text-secondary)]">
                       {resource.type === 'link' ? '🔗 链接' : '🖼️ 截图'}
                     </div>
                   </div>
-                  <div className="flex gap-2 ml-2">
+                  <div className="flex gap-2 ml-2 shrink-0">
                     <a
                       href={resource.url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="px-3 py-1 bg-blue-500 text-white rounded text-sm hover:opacity-80 transition-opacity"
+                      className="px-3 py-1 bg-sky-500 text-white rounded text-xs hover:bg-sky-600 transition-colors"
                     >
                       打开
                     </a>
                     <button
                       type="button"
                       onClick={() => handleDeleteResource(resource.id)}
-                      className={`px-3 py-1 rounded text-sm ${confirmDelete === resource.id ? 'bg-red-500 text-white' : 'text-red-500 hover:bg-red-100'}`}
+                      className={`px-3 py-1 rounded text-xs transition-colors ${
+                        confirmDelete === resource.id
+                          ? 'bg-red-600 text-white'
+                          : 'text-red-500 hover:bg-red-50 dark:hover:bg-red-950'
+                      }`}
                     >
                       {confirmDelete === resource.id ? '确认' : '删除'}
                     </button>

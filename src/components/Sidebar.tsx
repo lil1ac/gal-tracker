@@ -9,12 +9,18 @@ const statusLabels: Record<GameStatus | 'all', string> = {
   paused: '搁置',
 }
 
+const statusIcons: Record<GameStatus | 'all', string> = {
+  all: '📚',
+  wish: '💭',
+  playing: '🎮',
+  completed: '✅',
+  paused: '⏸️',
+}
+
 export function Sidebar() {
   const { games, filterStatus, setFilterStatus, viewMode, setViewMode } = useGameStore()
 
   const totalGames = games.length
-  const totalPlaytime = games.reduce((sum, _g) => sum, 0)
-  const hours = Math.floor(totalPlaytime / 60)
   const completedCount = games.filter(g => g.status === 'completed').length
   const playingCount = games.filter(g => g.status === 'playing').length
 
@@ -24,68 +30,83 @@ export function Sidebar() {
   }, {} as Record<GameStatus, number>)
 
   return (
-    <div className="w-56 glass p-4 flex flex-col gap-4 relative z-10">
-      <h1 className="text-2xl font-bold neon-text" style={{ fontFamily: "'Orbitron', sans-serif" }}>
-      GAL Tracker
-    </h1>
+    <div className="w-52 bg-[var(--bg-secondary)] border-r border-[var(--border)] flex flex-col shrink-0">
+      <div className="p-4 border-b border-[var(--border)]">
+        <h1 className="text-lg font-bold tracking-tight">
+          <span className="text-[var(--accent)]">GAL</span> Tracker
+        </h1>
+        <p className="text-xs text-[var(--text-secondary)] mt-0.5">视觉小说游戏管理</p>
+      </div>
 
-      <nav className="flex flex-col gap-1">
+      <nav className="flex flex-col gap-0.5 p-3">
         {(Object.keys(statusLabels) as (GameStatus | 'all')[]).map((status) => {
           const count = status === 'all' ? totalGames : (statusCounts[status as GameStatus] || 0)
+          const active = filterStatus === status
           return (
             <button
               key={status}
               onClick={() => setFilterStatus(status)}
-              className={`px-3 py-2 rounded text-left flex justify-between items-center transition-all duration-300 ${
-                filterStatus === status
-                  ? 'glass neon-glow text-[var(--accent)]'
-                  : 'hover:bg-[var(--bg-primary)] hover:text-[var(--accent)]'
+              className={`flex items-center justify-between px-3 py-2 rounded-md text-sm transition-colors ${
+                active
+                  ? 'bg-[var(--accent-soft)] text-[var(--accent)] font-medium'
+                  : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-primary)]'
               }`}
             >
-              <span>{statusLabels[status]}</span>
-              <span className={`text-xs ${filterStatus === status ? 'opacity-80' : 'opacity-60'}`}>{count}</span>
+              <span className="flex items-center gap-2">
+                <span className="text-xs">{statusIcons[status]}</span>
+                <span>{statusLabels[status]}</span>
+              </span>
+              <span className={`text-xs tabular-nums ${active ? 'text-[var(--accent)]' : ''}`}>
+                {count}
+              </span>
             </button>
           )
         })}
       </nav>
 
-      <div className="mt-2 p-3 glass rounded">
-        <h2 className="text-sm font-medium mb-2 text-[var(--text-secondary)]">统计</h2>
-        <div className="space-y-1 text-sm">
+      <div className="mx-3 p-3 rounded-lg bg-[var(--bg-primary)]">
+        <h2 className="text-xs font-medium mb-2 text-[var(--text-secondary)] uppercase tracking-wider">统计</h2>
+        <div className="space-y-1.5 text-sm">
           <div className="flex justify-between">
             <span className="text-[var(--text-secondary)]">游戏总数</span>
-            <span className="font-medium">{totalGames}</span>
+            <span>{totalGames}</span>
           </div>
           <div className="flex justify-between">
             <span className="text-[var(--text-secondary)]">游玩中</span>
-            <span className="font-medium text-yellow-500">{playingCount}</span>
+            <span className="text-[var(--accent)]">{playingCount}</span>
           </div>
           <div className="flex justify-between">
             <span className="text-[var(--text-secondary)]">已完成</span>
-            <span className="font-medium text-green-500">{completedCount}</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-[var(--text-secondary)]">总时长</span>
-            <span className="font-medium">{hours > 0 ? `${hours}小时` : '-'}</span>
+            <span className="text-emerald-600">{completedCount}</span>
           </div>
         </div>
       </div>
 
-      <div className="mt-auto flex gap-2">
-        <button
-          type="button"
-          onClick={() => setViewMode('card')}
-          className={`flex-1 px-2 py-1 rounded text-sm transition-all duration-300 ${viewMode === 'card' ? 'glass neon-glow text-[var(--accent)]' : 'hover:bg-[var(--bg-primary)]'}`}
-        >
-          卡片
-        </button>
-        <button
-          type="button"
-          onClick={() => setViewMode('list')}
-          className={`flex-1 px-2 py-1 rounded text-sm transition-all duration-300 ${viewMode === 'list' ? 'glass neon-glow text-[var(--accent)]' : 'hover:bg-[var(--bg-primary)]'}`}
-        >
-          列表
-        </button>
+      <div className="mt-auto p-3">
+        <div className="flex rounded-md bg-[var(--bg-primary)] p-0.5">
+          <button
+            type="button"
+            onClick={() => setViewMode('card')}
+            className={`flex-1 py-1.5 text-xs rounded font-medium transition-colors ${
+              viewMode === 'card'
+                ? 'bg-[var(--bg-secondary)] text-[var(--accent)] shadow-sm'
+                : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+            }`}
+          >
+            卡片
+          </button>
+          <button
+            type="button"
+            onClick={() => setViewMode('list')}
+            className={`flex-1 py-1.5 text-xs rounded font-medium transition-colors ${
+              viewMode === 'list'
+                ? 'bg-[var(--bg-secondary)] text-[var(--accent)] shadow-sm'
+                : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+            }`}
+          >
+            列表
+          </button>
+        </div>
       </div>
     </div>
   )
