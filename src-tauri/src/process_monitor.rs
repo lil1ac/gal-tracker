@@ -9,30 +9,37 @@ const POLL_INTERVAL: Duration = Duration::from_secs(1);
 const START_DEBOUNCE_MS: u64 = 3000;
 const EXIT_DEBOUNCE_MS: u64 = 5000;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct ProcessConfig {
     pub process_name: String,
     pub exe_path: Option<String>,
     pub match_type: String, // 'process_name' | 'exe_path' | 'name_and_path'
 }
 
+#[derive(Default)]
 pub struct ProcessState {
     pub seen_at: HashMap<String, Instant>,       // process_name -> first_seen
     pub last_seen: HashMap<String, Instant>,    // process_name -> last_seen
     pub emitted_start: HashMap<String, bool>,   // process_name -> already emitted start event
 }
 
-impl Default for ProcessState {
+/// Unified state for process monitoring
+pub struct MonitorState {
+    pub process_state: ProcessState,
+    pub configured_processes: Vec<ProcessConfig>,
+}
+
+impl Default for MonitorState {
     fn default() -> Self {
         Self {
-            seen_at: HashMap::new(),
-            last_seen: HashMap::new(),
-            emitted_start: HashMap::new(),
+            process_state: ProcessState::default(),
+            configured_processes: Vec::new(),
         }
     }
 }
 
-pub type SharedState = Arc<Mutex<ProcessState>>;
+/// Shared state type alias - Arc allows sharing across threads
+pub type SharedState = Arc<Mutex<MonitorState>>;
 
 /// Starts the process monitoring loop in a background thread.
 /// Polls sysinfo every second and emits tauri events for process start/exit.
@@ -50,8 +57,11 @@ pub fn start(app_handle: AppHandle, state: SharedState, mut stop_rx: tokio::sync
             sys.refresh_all();
             let now = Instant::now();
 
-            // Get configured processes from database
-            let configured = get_configured_processes_sync(&app_handle);
+            // Get configured processes from shared state (no blocking DB access)
+            let configured = {
+                let state_guard = state.blocking_lock();
+                state_guard.configured_processes.clone()
+            };
 
             // Build map of current running processes: name -> exe_path
             let current_procs: HashMap<String, String> = sys
@@ -95,25 +105,25 @@ pub fn start(app_handle: AppHandle, state: SharedState, mut stop_rx: tokio::sync
 
                 if is_running {
                     // Insert or get first_seen, then update last_seen
-                    let existing_first_seen = state_guard.seen_at.get(&config.process_name).copied();
+                    let existing_first_seen = state_guard.process_state.seen_at.get(&config.process_name).copied();
                     let first_seen = existing_first_seen.unwrap_or(now);
 
                     if existing_first_seen.is_none() {
-                        state_guard.seen_at.insert(config.process_name.clone(), now);
+                        state_guard.process_state.seen_at.insert(config.process_name.clone(), now);
                     }
-                    state_guard.last_seen.insert(config.process_name.clone(), now);
+                    state_guard.process_state.last_seen.insert(config.process_name.clone(), now);
 
                     // Check if we've reached start debounce threshold
-                    let already_emitted = state_guard.emitted_start.get(&config.process_name).copied().unwrap_or(false);
+                    let already_emitted = state_guard.process_state.emitted_start.get(&config.process_name).copied().unwrap_or(false);
                     if first_seen.elapsed().as_millis() as u64 >= START_DEBOUNCE_MS && !already_emitted {
                         // Emit process-start event (once per cycle, until process exits)
                         let _ = app_handle.emit("process-start", &config.process_name);
-                        state_guard.emitted_start.insert(config.process_name.clone(), true);
+                        state_guard.process_state.emitted_start.insert(config.process_name.clone(), true);
                     }
                 } else {
                     // Process not running - check if we need to emit exit
-                    let last_seen_instant = state_guard.last_seen.remove(&config.process_name);
-                    let first_seen_instant = state_guard.seen_at.get(&config.process_name).copied();
+                    let last_seen_instant = state_guard.process_state.last_seen.remove(&config.process_name);
+                    let first_seen_instant = state_guard.process_state.seen_at.get(&config.process_name).copied();
 
                     if let (Some(last_seen), Some(first_seen)) = (last_seen_instant, first_seen_instant) {
                         let first_seen_elapsed = first_seen.elapsed().as_millis() as u64;
@@ -127,8 +137,8 @@ pub fn start(app_handle: AppHandle, state: SharedState, mut stop_rx: tokio::sync
                             let _ = app_handle.emit("process-exit", &config.process_name);
                         }
                         // Clear all state when exit debounce completes (regardless of exit event)
-                        state_guard.seen_at.remove(&config.process_name);
-                        state_guard.emitted_start.remove(&config.process_name);
+                        state_guard.process_state.seen_at.remove(&config.process_name);
+                        state_guard.process_state.emitted_start.remove(&config.process_name);
                     }
                 }
             }
@@ -137,13 +147,6 @@ pub fn start(app_handle: AppHandle, state: SharedState, mut stop_rx: tokio::sync
             std::thread::sleep(POLL_INTERVAL);
         }
     });
-}
-
-/// Retrieves configured processes from the database.
-/// This is a stub that returns empty vec - full implementation comes in Task 6.
-fn get_configured_processes_sync(_app_handle: &AppHandle) -> Vec<ProcessConfig> {
-    // TODO: Task 6 will implement full database query via commands
-    vec![]
 }
 
 #[cfg(test)]
