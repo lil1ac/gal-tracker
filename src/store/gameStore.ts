@@ -27,8 +27,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
   viewMode: 'card',
   searchQuery: '',
 
-  load: () => {
-    const games = loadGames()
+  load: async () => {
+    const games = await loadGames()
     set({ games })
   },
 

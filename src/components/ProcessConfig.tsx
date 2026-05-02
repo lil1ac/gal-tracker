@@ -6,10 +6,9 @@ import { ProcessSelector } from './ProcessSelector'
 
 interface ProcessConfigProps {
   game: Game
-  onClose?: () => void
 }
 
-export function ProcessConfig({ game, onClose }: ProcessConfigProps) {
+export function ProcessConfig({ game }: ProcessConfigProps) {
   const [showSelector, setShowSelector] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
   const [processes, setProcesses] = useState<GameProcess[]>([])
@@ -51,17 +50,7 @@ export function ProcessConfig({ game, onClose }: ProcessConfigProps) {
     }
   }
 
-  const handleToggleEnabled = async (proc: GameProcess) => {
-    await saveProcessConfig(
-      game.id,
-      proc.process_name,
-      proc.exe_path,
-      proc.match_type
-    )
-    // Toggle enabled would require updateProcessConfig - for now just reload
-    loadProcesses()
-  }
-
+  
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">

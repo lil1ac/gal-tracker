@@ -13,8 +13,7 @@ export function Sidebar() {
   const { games, filterStatus, setFilterStatus, viewMode, setViewMode } = useGameStore()
 
   const totalGames = games.length
-  const totalPlaytime = games.reduce((sum, g) =>
-    sum + g.sessions.reduce((s, session) => s + session.duration_minutes, 0), 0)
+  const totalPlaytime = games.reduce((sum, _g) => sum, 0)
   const hours = Math.floor(totalPlaytime / 60)
   const completedCount = games.filter(g => g.status === 'completed').length
   const playingCount = games.filter(g => g.status === 'playing').length

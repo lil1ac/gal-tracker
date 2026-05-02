@@ -39,8 +39,8 @@ function AppContent() {
     setApiKey(key)
   }
 
-  const handleExport = () => {
-    const data = exportData()
+  const handleExport = async () => {
+    const data = await exportData()
     const blob = new Blob([data], { type: 'application/json' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
@@ -53,7 +53,7 @@ function AppContent() {
     const file = e.target.files?.[0]
     if (!file) return
     const text = await file.text()
-    const games = importData(text)
+    const games = await importData(text)
     load()
     alert(`导入了 ${games.length} 个游戏`)
   }

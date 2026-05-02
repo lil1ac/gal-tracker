@@ -39,7 +39,9 @@ export function SearchModal({ onClose }: SearchModalProps) {
       routes: [],
       tags: [],
       linked_resources: [],
-      sessions: [],
+      current_running: false,
+      auto_status_prompted: false,
+      auto_status_update_enabled: false,
       created_at: Date.now(),
       updated_at: Date.now(),
     }

@@ -14,7 +14,7 @@ export function GameCard({ game }: GameCardProps) {
     paused: 'bg-gray-500',
   }
 
-  const totalMinutes = game.sessions.reduce((sum, s) => sum + s.duration_minutes, 0)
+  const totalMinutes = 0 // Sessions stored in SQLite, not on Game object
   const hours = Math.floor(totalMinutes / 60)
 
   return (

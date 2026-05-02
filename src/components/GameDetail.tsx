@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { Game, PlaySession, Route, Resource } from '../types'
+import { Game, Route, Resource } from '../types'
 import { useGameStore } from '../store/gameStore'
 import { ProcessConfig } from './ProcessConfig'
 
@@ -43,22 +43,8 @@ export function GameDetail({ game, onClose }: GameDetailProps) {
   // Record time when component unmounts or game changes
   useEffect(() => {
     return () => {
-      if (!hasRecordedRef.current) {
-        const durationMinutes = Math.max(1, Math.floor((Date.now() - sessionStartRef.current) / 60000))
-        if (durationMinutes >= 1) {
-          const newSession: PlaySession = {
-            id: String(Date.now()),
-            start_time: sessionStartRef.current,
-            end_time: Date.now(),
-            duration_minutes: durationMinutes,
-          }
-          const currentGame = useGameStore.getState().games.find(g => g.id === game.id)
-          if (currentGame) {
-            updateGame(game.id, { sessions: [...currentGame.sessions, newSession] })
-          }
-        }
-        hasRecordedRef.current = true
-      }
+      // Session recording now handled by process_monitor - no need to track here
+      hasRecordedRef.current = true
     }
   }, [game.id])
 
@@ -144,18 +130,11 @@ export function GameDetail({ game, onClose }: GameDetailProps) {
     }
   }
 
-  const totalMinutes = game.sessions.reduce((sum, s) => sum + s.duration_minutes, 0) + Math.floor((Date.now() - sessionStartRef.current) / 60000)
+  const totalMinutes = Math.floor((Date.now() - sessionStartRef.current) / 60000)
   const hours = Math.floor(totalMinutes / 60)
   const mins = totalMinutes % 60
   const completedRoutes = game.routes.filter(r => r.completed_at).length
   const routeProgress = game.routes.length > 0 ? `${completedRoutes}/${game.routes.length}` : ''
-
-  const formatDate = (timestamp: number) => {
-    return new Date(timestamp).toLocaleString('zh-CN', {
-      year: 'numeric', month: '2-digit', day: '2-digit',
-      hour: '2-digit', minute: '2-digit'
-    })
-  }
 
   return (
     <div className="w-[28rem] border-l border-[var(--border)] bg-[var(--bg-primary)] overflow-y-auto">
@@ -222,7 +201,7 @@ export function GameDetail({ game, onClose }: GameDetailProps) {
                 : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
             }`}
           >
-            {tab === 'info' ? '信息' : tab === 'sessions' ? `游玩${game.sessions.length ? `(${game.sessions.length})` : ''}` : tab === 'routes' ? `路线${routeProgress ? `(${routeProgress})` : ''}` : tab === 'resources' ? `资源${game.linked_resources.length ? `(${game.linked_resources.length})` : ''}` : '进程'}
+            {tab === 'info' ? '信息' : tab === 'sessions' ? '游玩' : tab === 'routes' ? `路线${routeProgress ? `(${routeProgress})` : ''}` : tab === 'resources' ? `资源${game.linked_resources.length ? `(${game.linked_resources.length})` : ''}` : '进程'}
           </button>
         ))}
       </div>
@@ -332,18 +311,7 @@ export function GameDetail({ game, onClose }: GameDetailProps) {
               <div className="text-2xl font-bold text-[var(--accent)]">{formatElapsed(elapsedSeconds)}</div>
             </div>
             <div className="space-y-2">
-              {game.sessions.length === 0 && (
-                <p className="text-sm text-[var(--text-secondary)] text-center py-4">暂无游玩记录</p>
-              )}
-              {game.sessions.map((session, index) => (
-                <div key={session.id} className="flex justify-between items-center p-3 bg-[var(--bg-secondary)] rounded">
-                  <div className="text-sm">
-                    <div className="font-medium">第 {index + 1} 次游玩</div>
-                    <div className="text-[var(--text-secondary)]">{formatDate(session.start_time)}</div>
-                    <div className="text-[var(--accent)]">{session.duration_minutes} 分钟</div>
-                  </div>
-                </div>
-              ))}
+              <p className="text-sm text-[var(--text-secondary)] text-center py-4">游玩记录在 SQLite 数据库中管理</p>
             </div>
           </>
         )}
