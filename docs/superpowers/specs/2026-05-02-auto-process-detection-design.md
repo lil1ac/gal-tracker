@@ -94,17 +94,27 @@ CREATE TABLE play_sessions (
   started_at INTEGER NOT NULL,
   ended_at INTEGER,              -- NULL 表示当前正在计时
   duration_seconds INTEGER,
-  end_reason TEXT,              -- 'process_exit' | 'user_stop' | 'app_close' | 'too_short' | 'error' | 'app_crash'
-  FOREIGN KEY (game_id) REFERENCES games(id),
-  UNIQUE(game_id, ended_at)     -- 确保同一 game_id 同时只有一个 ended_at IS NULL 的会话
+  end_reason TEXT
+    CHECK(end_reason IN ('process_exit', 'user_stop', 'app_close', 'too_short', 'error', 'app_crash')),
+  FOREIGN KEY (game_id) REFERENCES games(id) ON DELETE CASCADE
 );
+
+CREATE UNIQUE INDEX idx_play_sessions_active_game
+ON play_sessions(game_id)
+WHERE ended_at IS NULL;
+
+CREATE INDEX idx_play_sessions_game_id
+ON play_sessions(game_id);
+
+CREATE INDEX idx_play_sessions_started_at
+ON play_sessions(started_at);
 ```
 
 #### 计时规则
 
 **同一 game_id 同一时间只允许一个 ended_at IS NULL 的 play_session。**
 
-通过 UNIQUE(game_id, ended_at) 约束实现（NULL 值在 SQLite 中不参与 UNIQUE 约束，但可通过触发器辅助验证）。
+通过部分唯一索引 `idx_play_sessions_active_game` 保证：`WHERE ended_at IS NULL`。
 
 同一游戏多个进程导致重复计时的情况（需避免）：例如游戏主程序 `CLANNAD.exe` 和启动器 `CLANNAD_launcher.exe` 同时运行，应只创建一条计时记录。
 
@@ -140,8 +150,6 @@ CREATE TABLE play_sessions (
 4. TrayManager 初始化系统托盘
 ```
 
-> **注**：SQLite 中 NULL 值不参与 UNIQUE 约束，上述 UNIQUE(game_id, ended_at) 约束实际通过应用层 + 触发器辅助实现，确保同一 game_id 同时只有一个 ended_at IS NULL 的会话。
-
 ### 检测到进程运行
 
 ```
@@ -154,7 +162,8 @@ CREATE TABLE play_sessions (
    b. games.current_running = true
    c. 检查 auto_status_prompted
       - false → 弹窗询问用户
-      - true 且 enabled → status = 'playing'
+      - true 且 auto_status_update_enabled = true
+        → 根据状态更新规则决定是否将 status 改为 playing
 5. 更新托盘Tooltip
 ```
 
@@ -166,7 +175,7 @@ CREATE TABLE play_sessions (
 
 - **同意** → `auto_status_prompted=true`, `auto_status_update_enabled=true`
   - 仅当 status 为空、想玩、搁置等非完成状态时，才自动改为 playing
-  - 已通关状态不会自动覆盖
+  - 已通关状态不自动覆盖
 - **拒绝** → `auto_status_prompted=true`, `auto_status_update_enabled=false`，不修改 status
 
 后续自动处理，不再询问。
@@ -175,10 +184,13 @@ CREATE TABLE play_sessions (
 
 进程检测增加防抖，避免瞬间启动/关闭导致频繁状态切换：
 
-| 阶段 | 延迟 | 行为 |
-|------|------|------|
-| 进程出现 | 确认连续存在 3 秒 |才开始计时，避免误检测 |
-| 进程消失 | 延迟 5 秒确认 | 再结束计时，避免游戏切出又切回被中断 |
+| 参数                           | 默认值 | 说明                               |
+| ------------------------------ | ------ | ---------------------------------- |
+| `process_start_debounce_seconds` | 3 秒   | 进程连续存在此时间后开始计时         |
+| `process_exit_debounce_seconds`  | 5 秒   | 进程消失后延迟此时间确认再结束计时   |
+| `min_session_seconds`            | 60 秒  | 少于此时长的会话标记为 `too_short`  |
+
+参数可后续在设置页配置。
 
 ### 进程结束
 
