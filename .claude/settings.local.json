@@ -4,7 +4,9 @@
       "Read(//d/prog/vibe/gal-tracker-new/**)",
       "Read(//d/prog/vibe/**)",
       "Bash(git remote *)",
-      "Bash(git push *)"
+      "Bash(git push *)",
+      "Bash(git add *)",
+      "Bash(git commit -m 'fix: replace sql.js with localStorage for MVP *)"
     ]
   }
 }
