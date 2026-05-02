@@ -7,15 +7,22 @@ import { SearchModal } from './components/SearchModal'
 import { GameDetail } from './components/GameDetail'
 import { useGameStore } from './store/gameStore'
 import { initDatabase, exportData, importData } from './services/database'
+import { setApiKey } from './services/bangumiApi'
 import './styles/themes.css'
 
 function AppContent() {
   const [showSearch, setShowSearch] = useState(false)
+  const [apiKey, setApiKeyState] = useState(localStorage.getItem('bgm_api_key') || '')
   const { load, setSearchQuery } = useGameStore()
 
   useEffect(() => {
     initDatabase().then(load)
   }, [])
+
+  const handleApiKeyChange = (key: string) => {
+    setApiKeyState(key)
+    setApiKey(key)
+  }
 
   const handleExport = () => {
     const data = exportData()
@@ -47,7 +54,14 @@ function AppContent() {
             className="px-3 py-2 rounded border border-[var(--border)] bg-[var(--bg-secondary)] w-64"
             onChange={(e) => setSearchQuery(e.target.value)}
           />
-          <div className="flex gap-2">
+          <div className="flex gap-2 items-center">
+            <input
+              type="text"
+              placeholder="Bangumi API Key"
+              value={apiKey}
+              onChange={(e) => handleApiKeyChange(e.target.value)}
+              className="px-2 py-1 rounded border border-[var(--border)] bg-[var(--bg-secondary)] w-40 text-sm"
+            />
             <ThemeToggle />
             <button type="button" onClick={handleExport} className="px-3 py-2 rounded bg-[var(--bg-secondary)]">
               导出
