@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Game, PlaySession, Route, Resource } from '../types'
 import { useGameStore } from '../store/gameStore'
 
@@ -19,6 +19,57 @@ export function GameDetail({ game, onClose }: GameDetailProps) {
   const [newResourceType, setNewResourceType] = useState<'link' | 'screenshot'>('link')
   const [newResourceDesc, setNewResourceDesc] = useState('')
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
+  const [elapsedSeconds, setElapsedSeconds] = useState(0)
+
+  // Auto playtime tracking
+  const sessionStartRef = useRef<number>(Date.now())
+  const hasRecordedRef = useRef(false)
+
+  useEffect(() => {
+    // Reset timer when game changes
+    sessionStartRef.current = Date.now()
+    hasRecordedRef.current = false
+    setElapsedSeconds(0)
+
+    // Update elapsed time every second
+    const interval = setInterval(() => {
+      setElapsedSeconds(Math.floor((Date.now() - sessionStartRef.current) / 1000))
+    }, 1000)
+
+    return () => clearInterval(interval)
+  }, [game.id])
+
+  // Record time when component unmounts or game changes
+  useEffect(() => {
+    return () => {
+      if (!hasRecordedRef.current) {
+        const durationMinutes = Math.max(1, Math.floor((Date.now() - sessionStartRef.current) / 60000))
+        if (durationMinutes >= 1) {
+          const newSession: PlaySession = {
+            id: String(Date.now()),
+            start_time: sessionStartRef.current,
+            end_time: Date.now(),
+            duration_minutes: durationMinutes,
+          }
+          const currentGame = useGameStore.getState().games.find(g => g.id === game.id)
+          if (currentGame) {
+            updateGame(game.id, { sessions: [...currentGame.sessions, newSession] })
+          }
+        }
+        hasRecordedRef.current = true
+      }
+    }
+  }, [game.id])
+
+  const formatElapsed = (seconds: number) => {
+    const h = Math.floor(seconds / 3600)
+    const m = Math.floor((seconds % 3600) / 60)
+    const s = seconds % 60
+    if (h > 0) {
+      return `${h}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`
+    }
+    return `${m}:${s.toString().padStart(2, '0')}`
+  }
 
   const handleSaveInfo = () => {
     updateGame(game.id, {
@@ -27,25 +78,6 @@ export function GameDetail({ game, onClose }: GameDetailProps) {
       tags: tags.split(',').map((t) => t.trim()).filter(Boolean),
     })
     setEditing(false)
-  }
-
-  const handleAddSession = (minutes: number) => {
-    const newSession: PlaySession = {
-      id: String(Date.now()),
-      start_time: Date.now() - minutes * 60 * 1000,
-      end_time: Date.now(),
-      duration_minutes: minutes,
-    }
-    updateGame(game.id, { sessions: [...game.sessions, newSession] })
-  }
-
-  const handleDeleteSession = (sessionId: string) => {
-    if (confirmDelete === sessionId) {
-      updateGame(game.id, { sessions: game.sessions.filter(s => s.id !== sessionId) })
-      setConfirmDelete(null)
-    } else {
-      setConfirmDelete(sessionId)
-    }
   }
 
   const handleAddRoute = () => {
@@ -111,7 +143,7 @@ export function GameDetail({ game, onClose }: GameDetailProps) {
     }
   }
 
-  const totalMinutes = game.sessions.reduce((sum, s) => sum + s.duration_minutes, 0)
+  const totalMinutes = game.sessions.reduce((sum, s) => sum + s.duration_minutes, 0) + Math.floor((Date.now() - sessionStartRef.current) / 60000)
   const hours = Math.floor(totalMinutes / 60)
   const mins = totalMinutes % 60
   const completedRoutes = game.routes.filter(r => r.completed_at).length
@@ -162,6 +194,12 @@ export function GameDetail({ game, onClose }: GameDetailProps) {
               {status === 'wish' ? '想玩' : status === 'playing' ? '在玩' : status === 'completed' ? '已完成' : '搁置'}
             </button>
           ))}
+        </div>
+
+        <div className="mt-3 p-2 bg-[var(--accent)] bg-opacity-10 rounded text-center">
+          <span className="text-sm text-[var(--accent)] font-medium">
+            本次游玩: {formatElapsed(elapsedSeconds)}
+          </span>
         </div>
 
         <div className="mt-3 flex gap-4 text-sm text-[var(--text-secondary)]">
@@ -288,33 +326,13 @@ export function GameDetail({ game, onClose }: GameDetailProps) {
 
         {activeTab === 'sessions' && (
           <>
-            <div className="mb-4 flex gap-2">
-              <input
-                type="number"
-                id="session-minutes"
-                title="游玩分钟数"
-                placeholder="本次游玩分钟数"
-                className="flex-1 p-2 rounded border border-[var(--border)] bg-[var(--bg-secondary)]"
-                min="1"
-              />
-              <button
-                type="button"
-                onClick={() => {
-                  const input = document.getElementById('session-minutes') as HTMLInputElement
-                  const mins = Number(input.value)
-                  if (mins > 0) {
-                    handleAddSession(mins)
-                    input.value = ''
-                  }
-                }}
-                className="px-4 py-2 bg-[var(--accent)] text-white rounded hover:opacity-80 transition-opacity"
-              >
-                添加
-              </button>
+            <div className="mb-4 p-3 bg-[var(--bg-secondary)] rounded text-center">
+              <div className="text-sm text-[var(--text-secondary)]">本次游玩</div>
+              <div className="text-2xl font-bold text-[var(--accent)]">{formatElapsed(elapsedSeconds)}</div>
             </div>
             <div className="space-y-2">
               {game.sessions.length === 0 && (
-                <p className="text-sm text-[var(--text-secondary)] text-center py-8">暂无游玩记录</p>
+                <p className="text-sm text-[var(--text-secondary)] text-center py-4">暂无游玩记录</p>
               )}
               {game.sessions.map((session, index) => (
                 <div key={session.id} className="flex justify-between items-center p-3 bg-[var(--bg-secondary)] rounded">
@@ -323,13 +341,6 @@ export function GameDetail({ game, onClose }: GameDetailProps) {
                     <div className="text-[var(--text-secondary)]">{formatDate(session.start_time)}</div>
                     <div className="text-[var(--accent)]">{session.duration_minutes} 分钟</div>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => handleDeleteSession(session.id)}
-                    className={`px-3 py-1 rounded text-sm ${confirmDelete === session.id ? 'bg-red-500 text-white' : 'text-red-500 hover:bg-red-100'}`}
-                  >
-                    {confirmDelete === session.id ? '确认' : '删除'}
-                  </button>
                 </div>
               ))}
             </div>
