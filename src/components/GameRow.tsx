@@ -1,14 +1,17 @@
-import { Game } from '../types'
 import { useGameStore } from '../store/gameStore'
+import { formatDuration, LibraryGame } from '../services/libraryStats'
 
 interface GameRowProps {
-  game: Game
+  game: LibraryGame
+}
+
+function formatDate(timestamp: number | null) {
+  if (!timestamp) return '-'
+  return new Date(timestamp).toLocaleDateString('zh-CN')
 }
 
 export function GameRow({ game }: GameRowProps) {
   const { setSelectedGame } = useGameStore()
-  const totalMinutes = 0 // Sessions stored in SQLite
-  const hours = Math.floor(totalMinutes / 60)
 
   return (
     <tr
@@ -22,7 +25,9 @@ export function GameRow({ game }: GameRowProps) {
       <td className="py-3">
         {game.status === 'wish' ? '想玩' : game.status === 'playing' ? '在玩' : game.status === 'completed' ? '已完成' : '搁置'}
       </td>
-      <td className="py-3">{hours > 0 ? `${hours}h` : '-'}</td>
+      <td className="py-3">{formatDuration(game.total_seconds)}</td>
+      <td className="py-3 text-sm text-[var(--text-secondary)]">{formatDate(game.last_played_at)}</td>
+      <td className="py-3 text-sm text-[var(--text-secondary)]">{formatDate(game.completed_at)}</td>
       <td className="py-3">{game.rating ? `★ ${game.rating}` : '-'}</td>
     </tr>
   )

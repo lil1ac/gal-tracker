@@ -11,21 +11,28 @@ export function SearchModal({ onClose }: SearchModalProps) {
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<BangumiSubject[]>([])
   const [loading, setLoading] = useState(false)
-  const { addGame } = useGameStore()
+  const [error, setError] = useState('')
+  const [addingId, setAddingId] = useState<string | null>(null)
+  const { addGame, games } = useGameStore()
 
   const handleSearch = async () => {
     if (!query.trim()) return
     setLoading(true)
+    setError('')
     try {
       const data = await searchGames(query)
       setResults(data)
     } catch (e) {
       console.error(e)
+      setError('搜索失败，请稍后重试或检查 API Key')
     }
     setLoading(false)
   }
 
-  const handleAddGame = (subject: BangumiSubject) => {
+  const handleAddGame = async (subject: BangumiSubject) => {
+    if (games.some(game => game.id === String(subject.id))) return
+    setAddingId(String(subject.id))
+    setError('')
     const game = {
       id: String(subject.id),
       name: subject.name,
@@ -42,17 +49,23 @@ export function SearchModal({ onClose }: SearchModalProps) {
       current_running: false,
       auto_status_prompted: false,
       auto_status_update_enabled: false,
+      completed_at: null,
       created_at: Date.now(),
       updated_at: Date.now(),
     }
-    addGame(game)
-    onClose()
+    try {
+      await addGame(game)
+      onClose()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '添加失败')
+      setAddingId(null)
+    }
   }
 
   return (
     <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center" onClick={onClose}>
       <div
-        className="bg-[var(--bg-secondary)] rounded-xl w-[540px] max-h-[75vh] flex flex-col shadow-xl"
+        className="panel w-[540px] max-h-[75vh] flex flex-col shadow-xl"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="p-4 border-b border-[var(--border)] flex gap-2">
@@ -62,20 +75,20 @@ export function SearchModal({ onClose }: SearchModalProps) {
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
             placeholder="搜索游戏..."
-            className="flex-1 px-3 py-2 rounded-md border border-[var(--border)] bg-[var(--bg-primary)] text-sm focus:border-[var(--accent)] focus:outline-none transition-colors"
+            className="field flex-1"
             autoFocus
           />
           <button
             type="button"
             onClick={handleSearch}
-            className="px-4 py-2 bg-[var(--accent)] text-white rounded-md text-sm font-medium hover:bg-[var(--accent-hover)] transition-colors"
+            className="btn btn-primary"
           >
             搜索
           </button>
           <button
             type="button"
             onClick={onClose}
-            className="px-3 py-2 rounded-md border border-[var(--border)] text-sm hover:bg-[var(--bg-primary)] transition-colors"
+            className="btn btn-secondary"
           >
             关闭
           </button>
@@ -84,17 +97,26 @@ export function SearchModal({ onClose }: SearchModalProps) {
           {loading && (
             <div className="text-center py-12 text-sm text-[var(--text-secondary)]">搜索中...</div>
           )}
-          {!loading && results.length === 0 && query && (
+          {!loading && error && (
+            <div className="text-center py-12 text-sm text-red-500">{error}</div>
+          )}
+          {!loading && !error && results.length === 0 && query && (
             <div className="text-center py-12 text-sm text-[var(--text-secondary)]">无结果</div>
           )}
-          {!loading && results.length === 0 && !query && (
+          {!loading && !error && results.length === 0 && !query && (
             <div className="text-center py-12 text-sm text-[var(--text-secondary)]">输入关键词搜索游戏</div>
           )}
-          {results.map((subject) => (
+          {results.map((subject) => {
+            const id = String(subject.id)
+            const exists = games.some(game => game.id === id)
+            const adding = addingId === id
+            return (
             <div
               key={subject.id}
               onClick={() => handleAddGame(subject)}
-              className="flex gap-3 p-3 rounded-lg hover:bg-[var(--bg-primary)] cursor-pointer transition-colors group"
+              className={`flex gap-3 p-3 rounded-md transition-colors group ${
+                exists ? 'opacity-60 cursor-not-allowed' : 'hover:bg-[var(--surface-subtle)] cursor-pointer'
+              }`}
             >
               <img
                 src={subject.cover}
@@ -111,9 +133,11 @@ export function SearchModal({ onClose }: SearchModalProps) {
                 <p className="text-xs text-[var(--text-secondary)] mt-1">
                   {[subject.air_date, subject.platform?.join(', ')].filter(Boolean).join(' · ')}
                 </p>
+                {exists && <p className="text-xs text-[var(--accent)] mt-1">已在库中</p>}
+                {adding && <p className="text-xs text-[var(--accent)] mt-1">正在添加...</p>}
               </div>
             </div>
-          ))}
+          )})}
         </div>
       </div>
     </div>

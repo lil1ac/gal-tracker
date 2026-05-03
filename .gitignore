@@ -1,10 +1,12 @@
 node_modules/
 dist/
+.tmp-tests/
 .DS_Store
 *.local
 
 # Rust build output
 src-tauri/target/
+src-tauri/.tmp-cargo-target*/
 
 # Tauri generated files
 src-tauri/gen/
@@ -14,3 +16,6 @@ src-tauri/gen/
 
 # Worktrees
 .worktrees/
+
+# Superpowers brainstorming companion
+.superpowers/

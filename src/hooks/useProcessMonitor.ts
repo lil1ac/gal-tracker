@@ -1,8 +1,15 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
-import { onProcessStart, onProcessExit, updateTrayTooltip, ProcessEventPayload } from '../services/processService'
+import {
+  getRunningProcesses,
+  isProcessMonitoringAvailable,
+  onProcessStart,
+  onProcessExit,
+  updateTrayTooltip,
+  ProcessEventPayload,
+} from '../services/processService'
 import { useGameStore } from '../store/gameStore'
 import { query, execute } from '../services/database'
-import { Game, GameProcess } from '../types'
+import { Game, GameProcess, RunningProcess } from '../types'
 
 interface GameProcessWithGame extends GameProcess {
   game_id: string
@@ -17,15 +24,40 @@ interface GameProcessWithGame extends GameProcess {
 type GameStatus = 'wish' | 'playing' | 'completed' | 'paused'
 
 const MIN_SESSION_SECONDS = 60
+const EXIT_RECONCILE_INTERVAL_MS = 3000
+
+function samePath(left: string | null | undefined, right: string | null | undefined): boolean {
+  return !!left && !!right && left.toLowerCase() === right.toLowerCase()
+}
+
+function processMatchesConfig(config: GameProcess, processes: RunningProcess[]): boolean {
+  switch (config.match_type) {
+    case 'process_name':
+      return processes.some(process => process.name.toLowerCase() === config.process_name.toLowerCase())
+    case 'exe_path':
+      return processes.some(process => samePath(process.exe_path, config.exe_path))
+    case 'name_and_path':
+      return processes.some(process =>
+        process.name.toLowerCase() === config.process_name.toLowerCase() &&
+        samePath(process.exe_path, config.exe_path)
+      )
+    default:
+      return false
+  }
+}
 
 export function useProcessMonitor() {
   const [runningGames, setRunningGames] = useState<string[]>([])
   const [activeGameId, setActiveGameId] = useState<string | null>(null)
   const [elapsed, setElapsed] = useState(0)
-  const { games, updateGame, load } = useGameStore()
+  const { updateGame, load } = useGameStore()
   const runningGamesRef = useRef<string[]>([])
   runningGamesRef.current = runningGames
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const gamesRef = useRef(useGameStore.getState().games)
+  gamesRef.current = useGameStore.getState().games
+  const activeGameIdRef = useRef<string | null>(null)
+  activeGameIdRef.current = activeGameId
 
   const handleProcessStart = useCallback(async (payload: ProcessEventPayload) => {
     const { game_id, process_name } = payload
@@ -43,7 +75,7 @@ export function useProcessMonitor() {
     if (processes.length === 0) return
 
     const config = processes[0]
-    const game = games.find(g => g.id === game_id) || {
+    const game = gamesRef.current.find(g => g.id === game_id) || {
       id: game_id,
       name: config.name,
       name_cn: config.name_cn,
@@ -69,12 +101,11 @@ export function useProcessMonitor() {
       )
     }
 
-    // 首次询问逻辑
+    // 首次检测到进程时自动进入“在玩”。这里避免使用 window.confirm，
+    // 原生确认框会阻塞桌面端渲染，让其他按钮看起来没有及时响应。
     if (!game.auto_status_prompted) {
-      const shouldUpdate = window.confirm(
-        `检测到 ${game.name_cn || game.name} 正在运行，是否将状态改为"在玩"？`
-      )
-      const newStatus = shouldUpdate && ['wish', 'paused', null].includes(game.status)
+      const shouldUpdate = ['wish', 'paused', null].includes(game.status)
+      const newStatus = shouldUpdate
         ? 'playing'
         : game.status
 
@@ -127,10 +158,11 @@ export function useProcessMonitor() {
     })
 
     load()
-  }, [games, updateGame, load])
+  }, [updateGame, load])
 
   const handleProcessExit = useCallback(async (payload: ProcessEventPayload) => {
     const { game_id, process_name } = payload
+    console.log('[useProcessMonitor] handleProcessExit called:', { game_id, process_name, activeGameId: activeGameIdRef.current })
 
     let remaining = 0
     let tooltip = 'GAL Tracker'
@@ -146,6 +178,7 @@ export function useProcessMonitor() {
       `SELECT id, started_at FROM play_sessions WHERE game_id = ? AND ended_at IS NULL LIMIT 1`,
       [game_id]
     )
+    console.log('[useProcessMonitor] open sessions found:', sessions.length)
 
     if (sessions.length > 0) {
       const session = sessions[0]
@@ -157,16 +190,20 @@ export function useProcessMonitor() {
         `UPDATE play_sessions SET ended_at = ?, duration_seconds = ?, end_reason = ? WHERE id = ?`,
         [now, durationSeconds, endReason, session.id]
       )
+      console.log('[useProcessMonitor] session closed:', { sessionId: session.id, durationSeconds, endReason })
     }
 
     // 停止计时器
-    if (activeGameId === game_id || activeGameId === null) {
+    if (activeGameIdRef.current === game_id || activeGameIdRef.current === null) {
+      console.log('[useProcessMonitor] stopping timer, condition matched')
       if (intervalRef.current) {
         clearInterval(intervalRef.current)
         intervalRef.current = null
       }
       setActiveGameId(null)
       setElapsed(0)
+    } else {
+      console.log('[useProcessMonitor] NOT stopping timer, activeGameIdRef:', activeGameIdRef.current, 'game_id:', game_id)
     }
 
     // 更新 current_running
@@ -176,7 +213,7 @@ export function useProcessMonitor() {
     await updateTrayTooltip(tooltip)
 
     load()
-  }, [activeGameId])
+  }, [updateGame, load])
 
   useEffect(() => {
     let unlistenStart: (() => void) | undefined
@@ -191,6 +228,52 @@ export function useProcessMonitor() {
       if (intervalRef.current) clearInterval(intervalRef.current)
     }
   }, [handleProcessStart, handleProcessExit])
+
+  useEffect(() => {
+    if (!isProcessMonitoringAvailable()) return
+
+    let disposed = false
+    let reconciling = false
+
+    const reconcileExitedProcesses = async () => {
+      if (disposed || reconciling) return
+      reconciling = true
+      try {
+        const activeSessions = await query<{ game_id: string }>(
+          `SELECT DISTINCT game_id FROM play_sessions WHERE ended_at IS NULL`
+        )
+        if (activeSessions.length === 0) return
+
+        const runningProcesses = await getRunningProcesses()
+        for (const session of activeSessions) {
+          const configs = await query<GameProcess>(
+            `SELECT * FROM game_processes WHERE game_id = ? AND enabled = 1`,
+            [session.game_id]
+          )
+          const matchingConfig = configs.find(config => processMatchesConfig(config, runningProcesses))
+          if (!matchingConfig && configs.length > 0) {
+            const config = configs[0]
+            await handleProcessExit({
+              config_id: config.id,
+              game_id: config.game_id,
+              process_name: config.process_name,
+            })
+          }
+        }
+      } catch (error) {
+        console.error('[useProcessMonitor] failed to reconcile exited processes:', error)
+      } finally {
+        reconciling = false
+      }
+    }
+
+    const reconcileInterval = setInterval(reconcileExitedProcesses, EXIT_RECONCILE_INTERVAL_MS)
+
+    return () => {
+      disposed = true
+      clearInterval(reconcileInterval)
+    }
+  }, [handleProcessExit])
 
   return { runningGames, activeGameId, elapsed }
 }

@@ -10,19 +10,22 @@ const statusLabels: Record<GameStatus | 'all', string> = {
 }
 
 const statusIcons: Record<GameStatus | 'all', string> = {
-  all: '📚',
-  wish: '💭',
-  playing: '🎮',
-  completed: '✅',
-  paused: '⏸️',
+  all: 'ALL',
+  wish: 'W',
+  playing: 'P',
+  completed: 'C',
+  paused: 'H',
 }
 
 interface SidebarProps {
   onOpenSettings: () => void
+  onOpenDashboard: () => void
+  onOpenLibrary: () => void
+  activeView: 'dashboard' | 'library'
 }
 
-export function Sidebar({ onOpenSettings }: SidebarProps) {
-  const { games, filterStatus, setFilterStatus, viewMode, setViewMode } = useGameStore()
+export function Sidebar({ onOpenSettings, onOpenDashboard, onOpenLibrary, activeView }: SidebarProps) {
+  const { games, filterStatus, setFilterStatus, viewMode, setViewMode, setSelectedGame } = useGameStore()
 
   const totalGames = games.length
   const completedCount = games.filter(g => g.status === 'completed').length
@@ -43,13 +46,27 @@ export function Sidebar({ onOpenSettings }: SidebarProps) {
       </div>
 
       <nav className="flex flex-col gap-0.5 p-3">
+        <button
+          type="button"
+          onClick={onOpenDashboard}
+          className={`flex items-center justify-between px-3 py-2 rounded-md text-sm transition-colors ${
+            activeView === 'dashboard'
+              ? 'bg-[var(--accent-soft)] text-[var(--accent)] font-medium'
+              : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-primary)]'
+          }`}
+        >
+          <span className="flex items-center gap-2">
+            <span className="text-[10px] font-semibold tracking-wider">DB</span>
+            <span>总览</span>
+          </span>
+        </button>
         {(Object.keys(statusLabels) as (GameStatus | 'all')[]).map((status) => {
           const count = status === 'all' ? totalGames : (statusCounts[status as GameStatus] || 0)
-          const active = filterStatus === status
+          const active = activeView === 'library' && filterStatus === status
           return (
             <button
               key={status}
-              onClick={() => setFilterStatus(status)}
+              onClick={() => { setFilterStatus(status); setSelectedGame(null); onOpenLibrary() }}
               className={`flex items-center justify-between px-3 py-2 rounded-md text-sm transition-colors ${
                 active
                   ? 'bg-[var(--accent-soft)] text-[var(--accent)] font-medium'
@@ -57,7 +74,7 @@ export function Sidebar({ onOpenSettings }: SidebarProps) {
               }`}
             >
               <span className="flex items-center gap-2">
-                <span className="text-xs">{statusIcons[status]}</span>
+                <span className="w-5 text-[10px] font-semibold tracking-wider text-[var(--text-secondary)]">{statusIcons[status]}</span>
                 <span>{statusLabels[status]}</span>
               </span>
               <span className={`text-xs tabular-nums ${active ? 'text-[var(--accent)]' : ''}`}>

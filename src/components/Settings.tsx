@@ -1,7 +1,7 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useTheme } from '../context/ThemeContext'
 import { setApiKey } from '../services/bangumiApi'
-import { exportData, importData } from '../services/database'
+import { exportData, importData, getSetting, setSetting, deleteSetting } from '../services/database'
 import { useGameStore } from '../store/gameStore'
 
 interface SettingsProps {
@@ -11,42 +11,83 @@ interface SettingsProps {
 export function Settings({ onClose }: SettingsProps) {
   const { theme, setTheme } = useTheme()
   const { load } = useGameStore()
-  const [apiKey, setApiKeyState] = useState(localStorage.getItem('bgm_api_key') || '')
+  const [apiKey, setApiKeyState] = useState('')
   const [saved, setSaved] = useState(false)
+  const [message, setMessage] = useState('')
+  const [busy, setBusy] = useState('')
 
-  const handleApiKeySave = () => {
-    setApiKey(apiKey)
-    setSaved(true)
-    setTimeout(() => setSaved(false), 2000)
+  useEffect(() => {
+    getSetting('bgm_api_key').then(k => { if (k) setApiKeyState(k) })
+  }, [])
+
+  const handleApiKeySave = async () => {
+    setBusy('api')
+    try {
+      if (apiKey) {
+        await setSetting('bgm_api_key', apiKey)
+      } else {
+        await deleteSetting('bgm_api_key')
+      }
+      setApiKey(apiKey)
+      setSaved(true)
+      setMessage('API Key 已保存')
+      setTimeout(() => setSaved(false), 2000)
+    } catch {
+      setMessage('API Key 保存失败')
+    } finally {
+      setBusy('')
+    }
   }
 
-  const handleApiKeyClear = () => {
-    setApiKeyState('')
-    setApiKey('')
-    setSaved(true)
-    setTimeout(() => setSaved(false), 2000)
+  const handleApiKeyClear = async () => {
+    setBusy('api')
+    try {
+      setApiKeyState('')
+      setApiKey('')
+      await deleteSetting('bgm_api_key')
+      setSaved(true)
+      setMessage('API Key 已清除')
+      setTimeout(() => setSaved(false), 2000)
+    } catch {
+      setMessage('API Key 清除失败')
+    } finally {
+      setBusy('')
+    }
   }
 
   const handleExport = async () => {
-    const data = await exportData()
-    const blob = new Blob([data], { type: 'application/json' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `gal-tracker-backup-${new Date().toISOString().split('T')[0]}.json`
-    a.click()
+    setBusy('export')
+    try {
+      const data = await exportData()
+      const blob = new Blob([data], { type: 'application/json' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `gal-tracker-backup-${new Date().toISOString().split('T')[0]}.json`
+      a.click()
+      URL.revokeObjectURL(url)
+      setMessage('备份文件已生成')
+    } catch {
+      setMessage('导出失败')
+    } finally {
+      setBusy('')
+    }
   }
 
   const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
+    setBusy('import')
     try {
       const text = await file.text()
-      const games = await importData(text)
-      load()
-      alert(`导入了 ${games.length} 个游戏`)
+      const result = await importData(text)
+      await load()
+      setMessage(`导入完成：${result.games.length} 个游戏，${result.play_sessions.length} 条游玩记录，${result.game_processes.length} 个进程配置`)
     } catch (err) {
-      alert('导入失败：文件格式错误')
+      setMessage('导入失败：文件格式错误')
+    } finally {
+      setBusy('')
+      e.target.value = ''
     }
   }
 
@@ -66,6 +107,11 @@ export function Settings({ onClose }: SettingsProps) {
       </div>
 
       <div className="flex-1 overflow-y-auto p-8 max-w-2xl">
+        {message && (
+          <div className="mb-6 rounded-md border border-[var(--border)] bg-[var(--surface-subtle)] px-4 py-3 text-sm text-[var(--text-primary)]">
+            {message}
+          </div>
+        )}
         {/* API Key */}
         <section className="mb-8">
           <h2 className="text-sm font-semibold mb-1">Bangumi API Key</h2>
@@ -78,19 +124,21 @@ export function Settings({ onClose }: SettingsProps) {
               value={apiKey}
               onChange={(e) => setApiKeyState(e.target.value)}
               placeholder="输入你的 API Key"
-              className="flex-1 px-3 py-2 rounded-md border border-[var(--border)] bg-[var(--bg-secondary)] text-sm focus:border-[var(--accent)] focus:outline-none transition-colors"
+              className="field flex-1"
             />
             <button
               type="button"
+              disabled={busy === 'api'}
               onClick={handleApiKeySave}
-              className="px-4 py-2 bg-[var(--accent)] text-white rounded-md text-sm font-medium hover:bg-[var(--accent-hover)] transition-colors"
+              className="btn btn-primary"
             >
-              {saved ? '已保存' : '保存'}
+              {busy === 'api' ? '保存中' : saved ? '已保存' : '保存'}
             </button>
             <button
               type="button"
+              disabled={busy === 'api'}
               onClick={handleApiKeyClear}
-              className="px-3 py-2 rounded-md border border-[var(--border)] text-sm text-[var(--text-secondary)] hover:text-red-500 transition-colors"
+              className="btn btn-secondary"
             >
               清除
             </button>
@@ -110,10 +158,10 @@ export function Settings({ onClose }: SettingsProps) {
                 key={key}
                 type="button"
                 onClick={() => setTheme(key)}
-                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                className={`btn ${
                   theme === key
-                    ? 'bg-[var(--accent)] text-white'
-                    : 'border border-[var(--border)] hover:bg-[var(--bg-secondary)]'
+                    ? 'btn-primary'
+                    : 'btn-secondary'
                 }`}
               >
                 {label}
@@ -131,13 +179,14 @@ export function Settings({ onClose }: SettingsProps) {
           <div className="flex gap-2">
             <button
               type="button"
+              disabled={busy === 'export'}
               onClick={handleExport}
-              className="px-4 py-2 bg-[var(--accent)] text-white rounded-md text-sm font-medium hover:bg-[var(--accent-hover)] transition-colors"
+              className="btn btn-primary"
             >
-              导出数据
+              {busy === 'export' ? '导出中' : '导出数据'}
             </button>
-            <label className="px-4 py-2 border border-[var(--border)] rounded-md text-sm cursor-pointer hover:bg-[var(--bg-secondary)] transition-colors">
-              导入数据
+            <label className={`btn btn-secondary ${busy === 'import' ? 'pointer-events-none opacity-60' : 'cursor-pointer'}`}>
+              {busy === 'import' ? '导入中' : '导入数据'}
               <input type="file" accept=".json" onChange={handleImport} className="hidden" />
             </label>
           </div>

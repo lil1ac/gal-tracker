@@ -1,0 +1,14 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "outDir": ".tmp-tests",
+    "rootDir": "src",
+    "types": ["node"],
+    "noEmit": false,
+    "allowImportingTsExtensions": false,
+    "isolatedModules": false
+  },
+  "include": ["src/**/*.test.ts", "src/services/libraryStats.ts", "src/types/**/*.ts"]
+}

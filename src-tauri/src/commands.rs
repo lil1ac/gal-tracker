@@ -35,6 +35,7 @@ pub fn get_configured_processes(state: tauri::State<'_, SharedState>) -> Vec<Pro
 #[command]
 pub async fn save_process_config(
     state: tauri::State<'_, SharedState>,
+    id: String,
     game_id: String,
     process_name: String,
     exe_path: Option<String>,
@@ -42,12 +43,13 @@ pub async fn save_process_config(
 ) -> Result<(), String> {
     let mut guard = state.lock().await;
     let config = ProcessConfig {
+        id: id.clone(),
         game_id,
         process_name: process_name.clone(),
         exe_path,
         match_type,
     };
-    if let Some(existing) = guard.configured_processes.iter_mut().find(|c| c.process_name == process_name) {
+    if let Some(existing) = guard.configured_processes.iter_mut().find(|c| c.id == id) {
         *existing = config;
     } else {
         guard.configured_processes.push(config);
@@ -58,10 +60,10 @@ pub async fn save_process_config(
 #[command]
 pub async fn delete_process_config(
     state: tauri::State<'_, SharedState>,
-    process_name: String,
+    id: String,
 ) -> Result<(), String> {
     let mut guard = state.lock().await;
-    guard.configured_processes.retain(|c| c.process_name != process_name);
+    guard.configured_processes.retain(|c| c.id != id);
     Ok(())
 }
 

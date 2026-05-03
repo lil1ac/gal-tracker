@@ -14,6 +14,7 @@ pub fn run() {
     let (_stop_tx, stop_rx) = tokio::sync::oneshot::channel::<()>();
 
     tauri::Builder::default()
+        .manage(state.clone())
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_sql::Builder::new().build())
         .invoke_handler(tauri::generate_handler![

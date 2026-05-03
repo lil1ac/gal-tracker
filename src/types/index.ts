@@ -56,6 +56,7 @@ export interface Game {
   current_running: boolean
   auto_status_prompted: boolean
   auto_status_update_enabled: boolean
+  completed_at: number | null
   created_at: number
   updated_at: number
 }
@@ -74,4 +75,19 @@ export interface RunningProcess {
   pid: number
   name: string           // "CLANNAD.exe"
   exe_path: string | null
+}
+
+export interface BackupData {
+  version: number
+  exported_at: number
+  games: Game[]
+  play_sessions: PlaySession[]
+  game_processes: GameProcess[]
+  settings: Record<string, string>
+}
+
+export interface ImportResult {
+  games: Game[]
+  play_sessions: PlaySession[]
+  game_processes: GameProcess[]
 }

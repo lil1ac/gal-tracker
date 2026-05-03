@@ -9,11 +9,13 @@ CREATE TABLE IF NOT EXISTS games (
   status TEXT DEFAULT 'wish',
   rating INTEGER,
   review TEXT,
+  routes TEXT DEFAULT '[]',
   tags TEXT DEFAULT '[]',
   linked_resources TEXT DEFAULT '[]',
   current_running INTEGER DEFAULT 0,
   auto_status_prompted INTEGER DEFAULT 0,
   auto_status_update_enabled INTEGER DEFAULT 0,
+  completed_at INTEGER,
   created_at INTEGER NOT NULL,
   updated_at INTEGER NOT NULL
 );
@@ -59,4 +61,9 @@ ON game_processes(game_id);
 
 CREATE INDEX IF NOT EXISTS idx_game_processes_enabled_process
 ON game_processes(enabled, process_name);
+
+CREATE TABLE IF NOT EXISTS settings (
+  key TEXT PRIMARY KEY,
+  value TEXT NOT NULL
+);
 `;

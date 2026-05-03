@@ -8,32 +8,47 @@ import { GameDetail } from './components/GameDetail'
 import { Settings } from './components/Settings'
 import { useGameStore } from './store/gameStore'
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts'
-import { initDatabase } from './services/database'
+import { initDatabase, getSetting } from './services/database'
 import { setApiKey } from './services/bangumiApi'
+import { syncAllProcessConfigs } from './services/processService'
 import { useProcessMonitor } from './hooks/useProcessMonitor'
+import type { GameActionKey } from './services/libraryStats'
+import type { Game } from './types'
 import './styles/themes.css'
 
 function AppContent() {
   const [showSearch, setShowSearch] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
-  const { load, setSearchQuery, selectedGame, setSelectedGame } = useGameStore()
+  const [activeView, setActiveView] = useState<'dashboard' | 'library'>('dashboard')
+  const [detailFocusTarget, setDetailFocusTarget] = useState<GameActionKey | null>(null)
+  const [ready, setReady] = useState(false)
+  const [startupError, setStartupError] = useState<string | null>(null)
+  const { load, setSearchQuery, selectedGame, setSelectedGame, sortMode, setSortMode, lastError, clearError } = useGameStore()
   const searchInputRef = useRef<HTMLInputElement>(null)
   const processMonitor = useProcessMonitor()
 
   useEffect(() => {
-    const key = localStorage.getItem('bgm_api_key')
-    if (key) setApiKey(key)
-    initDatabase().then(load)
+    initDatabase().then(async () => {
+      const key = await getSetting('bgm_api_key')
+      if (key) setApiKey(key)
+      await syncAllProcessConfigs()
+      load()
+      setReady(true)
+    }).catch((error) => {
+      console.error('Failed to initialize GAL Tracker', error)
+      setStartupError(error instanceof Error ? error.message : String(error))
+    })
   }, [])
 
   useKeyboardShortcuts({
     onEscape: () => {
-      if (selectedGame) {
-        setSelectedGame(null)
-      } else if (showSearch) {
+      if (showSearch) {
         setShowSearch(false)
       } else if (showSettings) {
         setShowSettings(false)
+      } else if (selectedGame) {
+        setDetailFocusTarget(null)
+        setSelectedGame(null)
       }
     },
     onSearch: () => {
@@ -43,19 +58,73 @@ function AppContent() {
 
   const handleOpenSettings = () => {
     setShowSettings(true)
+    setDetailFocusTarget(null)
     setSelectedGame(null)
   }
 
-  const handleCloseSettings = () => {
+  const handleOpenDashboard = () => {
+    setActiveView('dashboard')
     setShowSettings(false)
+    setDetailFocusTarget(null)
+    setSelectedGame(null)
+  }
+
+  const handleOpenLibrary = () => {
+    setActiveView('library')
+    setShowSettings(false)
+  }
+
+  const handleBack = () => {
+    setDetailFocusTarget(null)
+    setSelectedGame(null)
+  }
+
+  const handleOpenGameAction = (game: Game, target?: GameActionKey) => {
+    setActiveView('library')
+    setShowSettings(false)
+    setDetailFocusTarget(target ?? null)
+    setSelectedGame(game)
+  }
+
+  if (!ready) {
+    return (
+      <div className="flex h-screen bg-[var(--bg-primary)] items-center justify-center">
+        <div className="text-center">
+          {startupError ? (
+            <>
+              <div className="text-base font-semibold text-red-500 mb-2">启动失败</div>
+              <p className="max-w-md text-sm text-[var(--text-secondary)] break-words">{startupError}</p>
+            </>
+          ) : (
+            <>
+              <div className="w-8 h-8 border-2 border-[var(--accent)] border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+              <p className="text-sm text-[var(--text-secondary)]">正在启动...</p>
+            </>
+          )}
+        </div>
+      </div>
+    )
   }
 
   return (
     <div className="flex h-screen bg-[var(--bg-primary)] text-[var(--text-primary)]">
-      <Sidebar onOpenSettings={handleOpenSettings} />
+      <Sidebar
+        onOpenSettings={handleOpenSettings}
+        onOpenDashboard={handleOpenDashboard}
+        onOpenLibrary={handleOpenLibrary}
+        activeView={activeView}
+      />
       <div className="flex-1 flex flex-col min-w-0">
         {showSettings ? (
-          <Settings onClose={handleCloseSettings} />
+          <Settings onClose={() => setShowSettings(false)} />
+        ) : selectedGame ? (
+          <GameDetail
+            game={selectedGame}
+            onBack={handleBack}
+            processElapsed={processMonitor.activeGameId === selectedGame.id ? processMonitor.elapsed : 0}
+            isProcessRunning={processMonitor.activeGameId === selectedGame.id}
+            focusTarget={detailFocusTarget}
+          />
         ) : (
           <>
             <header className="h-14 px-5 flex items-center justify-between border-b border-[var(--border)] bg-[var(--bg-secondary)] shrink-0">
@@ -67,32 +136,47 @@ function AppContent() {
                   ref={searchInputRef}
                   type="text"
                   placeholder="搜索游戏... (按 / 聚焦)"
-                  className="pl-9 pr-3 py-1.5 rounded-md bg-[var(--bg-primary)] border border-[var(--border)] text-sm w-64 focus:border-[var(--accent)] focus:outline-none transition-colors"
+                  className="field w-64 py-1.5 pl-9"
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />
               </div>
               <div className="flex items-center gap-2">
+                {activeView === 'library' && (
+                  <select
+                    title="排序"
+                    value={sortMode}
+                    onChange={(e) => setSortMode(e.target.value as typeof sortMode)}
+                    className="field w-auto py-1.5"
+                  >
+                    <option value="updated_desc">最近更新</option>
+                    <option value="title_asc">标题</option>
+                    <option value="playtime_desc">游玩时长</option>
+                    <option value="last_played_desc">最近游玩</option>
+                    <option value="rating_desc">评分</option>
+                    <option value="completed_desc">通关时间</option>
+                  </select>
+                )}
                 <ThemeToggle />
                 <button
                   type="button"
-                  onClick={() => setShowSearch(true)}
-                  className="px-4 py-1.5 text-sm rounded-md font-medium bg-[var(--accent)] text-white hover:bg-[var(--accent-hover)] transition-colors"
+                  onClick={() => { setActiveView('library'); setShowSearch(true) }}
+                  className="btn btn-primary btn-sm"
                 >
                   添加游戏
                 </button>
               </div>
             </header>
-            <GameList />
+            <GameList activeView={activeView} onOpenGameAction={handleOpenGameAction} />
           </>
         )}
       </div>
-      {selectedGame && !showSettings && (
-        <GameDetail
-          game={selectedGame}
-          onClose={() => setSelectedGame(null)}
-          processElapsed={processMonitor.activeGameId === selectedGame.id ? processMonitor.elapsed : 0}
-          isProcessRunning={processMonitor.activeGameId === selectedGame.id}
-        />
+      {lastError && (
+        <div className="fixed bottom-4 right-4 z-50 max-w-sm rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 shadow-md dark:border-red-900 dark:bg-red-950 dark:text-red-300">
+          <div className="flex items-start gap-3">
+            <span className="min-w-0 flex-1 break-words">{lastError}</span>
+            <button type="button" onClick={clearError} className="text-xs text-red-700 underline dark:text-red-300">关闭</button>
+          </div>
+        </div>
       )}
       {showSearch && <SearchModal onClose={() => setShowSearch(false)} />}
     </div>

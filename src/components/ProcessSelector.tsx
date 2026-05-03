@@ -4,117 +4,127 @@ import { RunningProcess } from '../types'
 
 interface ProcessSelectorProps {
   onSelect: (process: RunningProcess) => void
-  onClose?: () => void
-  gameName?: string  // 用于自动匹配
+  gameName: string
 }
 
-export function ProcessSelector({ onSelect, onClose, gameName }: ProcessSelectorProps) {
+const SYSTEM_PROCS = new Set([
+  'system', 'svchost.exe', 'csrss.exe', 'winlogon.exe',
+  'services.exe', 'lsass.exe', 'smss.exe', 'wininit.exe',
+  'explorer.exe', 'dwm.exe', 'conhost.exe', 'taskhostw.exe',
+  'runtimebroker.exe', 'shellexperiencehost.exe', 'startmenuexperiencehost.exe',
+  'searchindexer.exe', 'spoolsv.exe', 'fontdrvhost.exe', 'ctfmon.exe',
+  'textinputhost.exe', 'applicationframehost.exe', 'sihost.exe',
+  'taskmgr.exe', 'procexp.exe', 'procexp64.exe',
+])
+
+export function ProcessSelector({ onSelect, gameName }: ProcessSelectorProps) {
   const [processes, setProcesses] = useState<RunningProcess[]>([])
   const [loading, setLoading] = useState(true)
+  const [search, setSearch] = useState('')
 
-  useEffect(() => {
-    loadProcesses()
-  }, [])
+  useEffect(() => { loadProcesses() }, [])
 
   const loadProcesses = async () => {
     setLoading(true)
     try {
-      const procs = await getRunningProcesses()
-      const gameProcs = procs.filter(
-        (p) => p.name.endsWith('.exe') && !isSystemProcess(p.name)
-      )
-      setProcesses(gameProcs)
-    } catch (e) {
-      console.error('Failed to load processes', e)
+      const all = await getRunningProcesses()
+      setProcesses(all.filter(p => p.name.endsWith('.exe') && !SYSTEM_PROCS.has(p.name.toLowerCase())))
+    } catch {
+      // silently fail
     } finally {
       setLoading(false)
     }
   }
 
-  const isSystemProcess = (name: string) => {
-    const systemProcs = ['System', 'svchost.exe', 'csrss.exe', 'winlogon.exe',
-                          'services.exe', 'lsass.exe', 'smss.exe', 'wininit.exe',
-                          'explorer.exe', 'dwm.exe', 'conhost.exe', 'taskhostw.exe']
-    return systemProcs.some(s => name.toLowerCase() === s.toLowerCase())
-  }
-
-  // 自动匹配：进程名包含游戏名，或游戏名包含进程名（去掉.exe后缀）
   const matchScore = (proc: RunningProcess): number => {
-    if (!gameName) return 0
     const procName = proc.name.replace(/\.exe$/i, '').toLowerCase()
     const game = gameName.toLowerCase()
-    if (procName === game) return 3  // 完全匹配
-    if (procName.includes(game)) return 2  // 进程名包含游戏名
-    if (game.includes(procName) && procName.length > 2) return 1  // 游戏名包含进程名
+    if (procName === game) return 3
+    if (procName.includes(game)) return 2
+    if (game.includes(procName) && procName.length > 2) return 1
     return 0
   }
 
-  const sortedAndHighlighted = useMemo(() => {
-    if (!gameName) return processes.map(p => ({ ...p, score: 0 }))
-    return processes
-      .map(p => ({ ...p, score: matchScore(p) }))
-      .sort((a, b) => b.score - a.score)
-  }, [processes, gameName])
+  const results = useMemo(() => {
+    let list = processes.map(p => ({ ...p, score: matchScore(p) }))
+    if (search) {
+      const q = search.toLowerCase()
+      list = list.filter(p => p.name.toLowerCase().includes(q) || (p.exe_path && p.exe_path.toLowerCase().includes(q)))
+    }
+    return list.sort((a, b) => b.score - a.score)
+  }, [processes, search])
 
   return (
-    <div className="p-4">
-      <div className="flex justify-between items-center mb-4">
-        <h3 className="font-bold">选择进程</h3>
-        <button
-          type="button"
-          onClick={loadProcesses}
-          className="text-sm text-blue-500 hover:underline"
-        >
-          刷新
-        </button>
-      </div>
-      {gameName && (
-        <p className="text-sm text-gray-500 mb-2">游戏: {gameName}</p>
-      )}
-      {loading ? (
-        <p className="text-center py-8 text-gray-500">加载中...</p>
-      ) : processes.length === 0 ? (
-        <p className="text-center py-8 text-gray-500">暂未发现游戏进程</p>
-      ) : (
-        <div className="space-y-2 max-h-64 overflow-y-auto">
-          {sortedAndHighlighted.map((proc) => (
-            <div
-              key={proc.pid}
-              onClick={() => onSelect(proc)}
-              className={`p-3 rounded cursor-pointer transition-colors ${
-                proc.score > 0
-                  ? 'bg-green-100 hover:bg-green-200 border-2 border-green-400'
-                  : 'bg-[var(--bg-secondary)] hover:bg-gray-300'
-              }`}
-            >
-              <div className="flex justify-between items-center">
-                <div className="font-medium">{proc.name}</div>
-                {proc.score > 0 && (
-                  <span className="text-xs bg-green-500 text-white px-2 py-1 rounded">
-                    推荐
-                  </span>
-                )}
-              </div>
-              {proc.exe_path && (
-                <div className="text-xs text-gray-500 truncate">
-                  {proc.exe_path}
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
-      {onClose && (
-        <div className="mt-4 flex justify-end">
+    <div className="flex flex-col h-full">
+      <div className="p-4 border-b border-[var(--border)] space-y-3">
+        <div className="flex gap-2">
+          <div className="relative flex-1">
+            <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-secondary)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+            <input
+              type="text"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="搜索进程名或路径..."
+              className="field pl-9"
+            />
+          </div>
           <button
             type="button"
-            onClick={onClose}
-            className="px-4 py-2 bg-gray-200 rounded"
+            onClick={loadProcesses}
+            className="btn btn-secondary"
           >
-            关闭
+            刷新
           </button>
         </div>
-      )}
+        <div className="flex gap-4 text-xs text-[var(--text-secondary)]">
+          <span>匹配游戏: <span className="text-[var(--accent)] font-medium">{gameName}</span></span>
+          <span>共 {results.length} 个进程</span>
+        </div>
+      </div>
+
+      <div className="flex-1 overflow-y-auto p-4">
+        {loading ? (
+          <div className="text-center py-12 text-sm text-[var(--text-secondary)]">正在扫描进程...</div>
+        ) : results.length === 0 ? (
+          <div className="text-center py-12 text-sm text-[var(--text-secondary)]">
+            {search ? '无匹配结果' : '未发现非系统进程，请确保游戏正在运行后点击刷新'}
+          </div>
+        ) : (
+          <div className="space-y-1.5">
+            {results.map(proc => (
+              <button
+                key={proc.pid}
+                type="button"
+                onClick={() => onSelect(proc)}
+                className={`w-full text-left p-3 rounded-lg transition-colors ${
+                  proc.score > 0
+                    ? 'bg-[var(--accent-soft)] border border-[var(--accent)] hover:bg-[var(--surface-subtle)]'
+                    : 'bg-[var(--surface-subtle)] border border-transparent hover:border-[var(--border)]'
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <div className="font-medium text-sm">{proc.name}</div>
+                  <div className="flex items-center gap-2">
+                    {proc.score > 0 && (
+                      <span className="text-xs bg-[var(--accent)] text-white px-2 py-0.5 rounded-md font-medium">
+                        推荐
+                      </span>
+                    )}
+                    <span className="text-xs text-[var(--text-secondary)]">PID {proc.pid}</span>
+                  </div>
+                </div>
+                {proc.exe_path && (
+                  <div className="text-xs text-[var(--text-secondary)] truncate mt-1">
+                    {proc.exe_path}
+                  </div>
+                )}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   )
 }

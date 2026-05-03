@@ -1,8 +1,8 @@
-import { Game } from '../types'
 import { useGameStore } from '../store/gameStore'
+import { formatDuration, LibraryGame } from '../services/libraryStats'
 
 interface GameCardProps {
-  game: Game
+  game: LibraryGame
 }
 
 const statusBadge: Record<string, { label: string; className: string }> = {
@@ -37,6 +37,12 @@ export function GameCard({ game }: GameCardProps) {
         <span className={`absolute top-2 right-2 px-1.5 py-0.5 rounded text-xs font-medium ${badge.className}`}>
           {badge.label}
         </span>
+        {game.current_running && (
+          <span className="absolute top-2 left-2 flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-medium bg-emerald-500 text-white">
+            <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+            运行中
+          </span>
+        )}
       </div>
       <div className="p-2.5">
         <h3 className="text-sm font-medium truncate">{game.name_cn || game.name}</h3>
@@ -50,6 +56,16 @@ export function GameCard({ game }: GameCardProps) {
             </span>
           )}
           {game.air_date && <span>{game.air_date.split('-')[0]}</span>}
+        </div>
+        <div className="mt-2 flex items-center justify-between gap-2 text-[11px] text-[var(--text-secondary)]">
+          <span>{formatDuration(game.total_seconds)}</span>
+          <span className="truncate text-right">
+            {game.completed_at
+              ? new Date(game.completed_at).toLocaleDateString('zh-CN')
+              : game.route_progress.total > 0
+                ? `${game.route_progress.completed}/${game.route_progress.total} 路线`
+                : ''}
+          </span>
         </div>
       </div>
     </div>
