@@ -10,5 +10,6 @@
     "allowImportingTsExtensions": false,
     "isolatedModules": false
   },
-  "include": ["src/**/*.test.ts", "src/services/libraryStats.ts", "src/types/**/*.ts"]
+  "include": ["src/**/*.test.ts", "src/services/libraryStats.ts", "src/services/launchService.ts", "src/services/dashboardStats.ts", "src/types/**/*.ts"],
+  "exclude": []
 }

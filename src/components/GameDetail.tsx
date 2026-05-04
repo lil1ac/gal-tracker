@@ -1,7 +1,9 @@
-import { useEffect, useMemo, useState } from 'react'
-import { Game, Resource, Route } from '../types'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { Game, GameProcess, Resource, Route } from '../types'
 import { useGameStore } from '../store/gameStore'
 import { ProcessConfig } from './ProcessConfig'
+import { query } from '../services/database'
+import { canLaunchProcess, isGameLaunchAvailable, launchGameProcess } from '../services/launchService'
 import { formatDuration, GameActionKey, getGameActionItems } from '../services/libraryStats'
 
 interface GameDetailProps {
@@ -83,12 +85,28 @@ export function GameDetail({ game, onBack, processElapsed, isProcessRunning, foc
   const [completedAtDraft, setCompletedAtDraft] = useState(toDateInput(game.completed_at))
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
   const [highlight, setHighlight] = useState<GameActionKey | null>(null)
+  const [launchProcess, setLaunchProcess] = useState<GameProcess | null>(null)
+  const [launchBusy, setLaunchBusy] = useState(false)
+  const [launchMessage, setLaunchMessage] = useState('')
+
+  const loadLaunchProcess = useCallback(async () => {
+    const rows = await query<GameProcess>(
+      `SELECT * FROM game_processes
+       WHERE game_id = ? AND enabled = 1 AND exe_path IS NOT NULL
+       ORDER BY updated_at DESC
+       LIMIT 1`,
+      [game.id]
+    )
+    setLaunchProcess(rows[0] ?? null)
+  }, [game.id])
 
   useEffect(() => {
     setTagDraft(game.tags.join(', '))
     setReviewDraft(game.review || '')
     setCompletedAtDraft(toDateInput(game.completed_at))
   }, [game.id, game.tags, game.review, game.completed_at])
+
+  useEffect(() => { loadLaunchProcess() }, [loadLaunchProcess])
 
   useEffect(() => {
     if (!focusTarget) return
@@ -177,6 +195,23 @@ export function GameDetail({ game, onBack, processElapsed, isProcessRunning, foc
     await addManualSession(game.id, startedAt, Math.round(minutes * 60))
     setManualStartedAt(toDatetimeLocal(Date.now()))
     setManualMinutes('60')
+  }
+
+  const handleLaunchGame = async () => {
+    if (!canLaunchProcess(launchProcess)) {
+      setLaunchMessage('请先在进程监控里绑定带路径的 exe')
+      return
+    }
+    setLaunchBusy(true)
+    setLaunchMessage('')
+    try {
+      await launchGameProcess(launchProcess)
+      setLaunchMessage('已发送启动命令')
+    } catch (error) {
+      setLaunchMessage(error instanceof Error ? error.message : '启动失败')
+    } finally {
+      setLaunchBusy(false)
+    }
   }
 
   const tabs = [
@@ -460,7 +495,7 @@ export function GameDetail({ game, onBack, processElapsed, isProcessRunning, foc
                   </div>
                 )}
 
-                {activeTab === 'processes' && <ProcessConfig game={game} />}
+                {activeTab === 'processes' && <ProcessConfig game={game} onProcessesChanged={loadLaunchProcess} />}
               </div>
             </section>
           </div>
@@ -487,10 +522,24 @@ export function GameDetail({ game, onBack, processElapsed, isProcessRunning, foc
             <section className="panel p-4">
               <h2 className="text-sm font-semibold">快速操作</h2>
               <div className="mt-3 grid gap-2">
+                <button
+                  type="button"
+                  onClick={handleLaunchGame}
+                  disabled={!canLaunchProcess(launchProcess) || !isGameLaunchAvailable() || launchBusy}
+                  className="btn btn-primary w-full"
+                  title={!canLaunchProcess(launchProcess) ? '请先在进程监控里绑定带路径的 exe' : isGameLaunchAvailable() ? '启动游戏' : '启动游戏仅在桌面版可用'}
+                >
+                  {launchBusy ? '启动中...' : '启动游戏'}
+                </button>
                 <button type="button" onClick={() => handleStatus('completed')} className="btn btn-secondary w-full">标记已完成</button>
                 <button type="button" onClick={() => jumpToAction('completed_at')} className="btn btn-secondary w-full">设置通关时间</button>
                 <button type="button" onClick={() => { setActiveTab('sessions'); document.querySelector('.detail-hero')?.scrollIntoView({ behavior: 'smooth' }) }} className="btn btn-secondary w-full">查看游玩记录</button>
               </div>
+              {launchMessage && (
+                <p className="mt-3 rounded-md bg-[var(--surface-subtle)] px-3 py-2 text-xs text-[var(--text-secondary)]">
+                  {launchMessage}
+                </p>
+              )}
             </section>
 
             <section className="panel p-4">

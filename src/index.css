@@ -188,4 +188,243 @@ body {
     background: var(--surface-subtle);
     color: var(--text-secondary);
   }
+
+  .dashboard-shell {
+    @apply flex-1 overflow-y-auto px-5 py-5 md:px-7;
+    background:
+      linear-gradient(180deg, color-mix(in srgb, var(--surface-subtle) 70%, transparent), transparent 18rem),
+      var(--bg-primary);
+  }
+
+  .dashboard-workbench {
+    @apply mx-auto max-w-[1500px] space-y-5;
+  }
+
+  .dashboard-header {
+    @apply flex items-end justify-between gap-4 border-b pb-4;
+    border-color: color-mix(in srgb, var(--border) 72%, transparent);
+  }
+
+  .dashboard-header h1 {
+    @apply text-xl font-semibold leading-tight;
+  }
+
+  .dashboard-header p,
+  .dashboard-header span {
+    @apply mt-1 text-xs;
+    color: var(--text-secondary);
+  }
+
+  .dashboard-metric-strip {
+    @apply grid overflow-hidden rounded-lg border sm:grid-cols-2 xl:grid-cols-5;
+    border-color: var(--border);
+    background: var(--bg-secondary);
+    box-shadow: var(--shadow);
+  }
+
+  .dashboard-metric {
+    @apply min-h-[5.75rem] px-4 py-3;
+    border-right: 1px solid color-mix(in srgb, var(--border) 78%, transparent);
+  }
+
+  .dashboard-metric:last-child {
+    border-right: 0;
+  }
+
+  .dashboard-metric span {
+    @apply block text-[11px] font-medium;
+    color: var(--text-secondary);
+  }
+
+  .dashboard-metric strong {
+    @apply mt-2 block truncate text-2xl font-semibold leading-none;
+    letter-spacing: 0;
+  }
+
+  .dashboard-metric p {
+    @apply mt-2 truncate text-[11px];
+    color: var(--text-secondary);
+  }
+
+  .dashboard-metric.is-accent strong {
+    color: var(--accent);
+  }
+
+  .dashboard-main-grid {
+    @apply grid gap-5 xl:grid-cols-[minmax(0,1.55fr)_minmax(20rem,0.85fr)];
+  }
+
+  .dashboard-side-stack {
+    @apply grid gap-5;
+  }
+
+  .dashboard-rank-grid {
+    @apply grid gap-5 xl:grid-cols-3;
+  }
+
+  .dashboard-bottom-grid {
+    @apply grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(20rem,0.72fr)];
+  }
+
+  .dashboard-panel {
+    @apply rounded-lg border p-4;
+    border-color: color-mix(in srgb, var(--border) 86%, transparent);
+    background: color-mix(in srgb, var(--bg-secondary) 94%, var(--surface-subtle));
+    box-shadow: var(--shadow);
+  }
+
+  .dashboard-section-head {
+    @apply mb-3 flex items-center justify-between gap-3;
+  }
+
+  .dashboard-section-head span {
+    @apply text-xs;
+    color: var(--text-secondary);
+  }
+
+  .dashboard-section-title {
+    @apply mb-3 text-sm font-semibold;
+  }
+
+  .dashboard-section-head .dashboard-section-title {
+    @apply mb-0;
+  }
+
+  .dashboard-empty {
+    @apply rounded-md px-4 py-7 text-center text-sm;
+    background: color-mix(in srgb, var(--surface-subtle) 78%, transparent);
+    color: var(--text-secondary);
+  }
+
+  .dashboard-empty.is-tall {
+    @apply py-16;
+  }
+
+  .dashboard-chart {
+    @apply relative h-56 pt-2;
+  }
+
+  .dashboard-chart-grid {
+    @apply pointer-events-none absolute inset-x-0 top-4 h-40;
+    background-image: linear-gradient(to bottom, color-mix(in srgb, var(--border) 52%, transparent) 1px, transparent 1px);
+    background-size: 100% 25%;
+  }
+
+  .dashboard-chart-bars {
+    @apply relative flex h-44 items-end gap-1;
+  }
+
+  .dashboard-chart-column {
+    @apply relative flex min-w-0 flex-1 flex-col items-center justify-end;
+  }
+
+  .dashboard-chart-bar {
+    @apply w-full rounded-t-sm transition-all duration-300;
+    background: linear-gradient(180deg, var(--accent), color-mix(in srgb, var(--accent) 72%, var(--bg-secondary)));
+    opacity: 0.78;
+  }
+
+  .dashboard-chart-column:hover .dashboard-chart-bar {
+    opacity: 1;
+    transform: translateY(-2px);
+  }
+
+  .dashboard-tooltip {
+    @apply pointer-events-none absolute bottom-full z-10 mb-2 hidden whitespace-nowrap rounded-md border px-2 py-1 text-xs shadow-sm group-hover:block;
+    border-color: var(--border);
+    background: var(--bg-secondary);
+  }
+
+  .dashboard-chart-labels {
+    @apply mt-3 flex justify-between text-[11px];
+    color: var(--text-secondary);
+  }
+
+  .dashboard-bar-row {
+    @apply space-y-1.5;
+  }
+
+  .dashboard-bar-meta {
+    @apply flex items-center justify-between gap-3 text-xs;
+  }
+
+  .dashboard-bar-meta span:first-child {
+    @apply min-w-0 truncate;
+  }
+
+  .dashboard-bar-meta span:last-child {
+    @apply shrink-0;
+    color: var(--text-secondary);
+  }
+
+  .dashboard-bar-track {
+    @apply h-1.5 overflow-hidden rounded-full;
+    background: color-mix(in srgb, var(--surface-subtle) 82%, var(--border));
+  }
+
+  .dashboard-bar-fill {
+    @apply h-full rounded-full transition-all duration-500;
+    background: var(--accent);
+  }
+
+  .dashboard-rank-list,
+  .dashboard-action-list {
+    @apply divide-y;
+    border-color: color-mix(in srgb, var(--border) 68%, transparent);
+  }
+
+  .dashboard-rank-row {
+    @apply grid w-full grid-cols-[1.75rem_minmax(0,1fr)_auto] items-center gap-3 py-2.5 text-left text-sm transition-colors;
+  }
+
+  .dashboard-rank-row:hover {
+    color: var(--accent);
+  }
+
+  .dashboard-rank-index {
+    @apply text-xs font-semibold tabular-nums;
+    color: var(--text-secondary);
+  }
+
+  .dashboard-rank-title {
+    @apply min-w-0 truncate;
+  }
+
+  .dashboard-rank-value {
+    @apply shrink-0 text-xs tabular-nums;
+    color: var(--text-secondary);
+  }
+
+  .dashboard-action-row {
+    @apply py-2.5 first:pt-0 last:pb-0;
+  }
+
+  .dashboard-action-title {
+    @apply block w-full truncate text-left text-sm font-medium transition-colors;
+  }
+
+  .dashboard-action-title:hover {
+    color: var(--accent);
+  }
+
+  .dashboard-action-chips {
+    @apply mt-2 flex flex-wrap gap-1.5;
+  }
+
+  .dashboard-action-chip {
+    @apply rounded-full border px-2 py-0.5 text-[11px] transition-colors;
+    border-color: var(--border);
+    color: var(--text-secondary);
+  }
+
+  .dashboard-action-chip:hover {
+    border-color: var(--accent);
+    color: var(--text-primary);
+  }
+
+  .dashboard-action-chip.is-important {
+    border-color: color-mix(in srgb, var(--accent) 70%, var(--border));
+    background: var(--accent-soft);
+    color: var(--accent);
+  }
 }

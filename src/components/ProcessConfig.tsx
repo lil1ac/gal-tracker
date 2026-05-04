@@ -7,9 +7,10 @@ import { Modal } from './Modal'
 
 interface ProcessConfigProps {
   game: Game
+  onProcessesChanged?: () => void
 }
 
-export function ProcessConfig({ game }: ProcessConfigProps) {
+export function ProcessConfig({ game, onProcessesChanged }: ProcessConfigProps) {
   const [showModal, setShowModal] = useState(false)
   const [busyId, setBusyId] = useState<string | null>(null)
   const [error, setError] = useState('')
@@ -64,6 +65,7 @@ export function ProcessConfig({ game }: ProcessConfigProps) {
         )
       }
       await saveProcessConfig(id, game.id, proc.name, exePath, matchType)
+      onProcessesChanged?.()
     } catch (err) {
       setProcesses(previous)
       setError(err instanceof Error ? err.message : '绑定进程失败')
@@ -80,6 +82,7 @@ export function ProcessConfig({ game }: ProcessConfigProps) {
     try {
       await execute('DELETE FROM game_processes WHERE id = ?', [process.id])
       await deleteProcessConfig(process.id)
+      onProcessesChanged?.()
     } catch (err) {
       setProcesses(previous)
       setError(err instanceof Error ? err.message : '删除进程监控失败')
@@ -101,6 +104,7 @@ export function ProcessConfig({ game }: ProcessConfigProps) {
       } else {
         await deleteProcessConfig(process.id)
       }
+      onProcessesChanged?.()
     } catch (err) {
       setProcesses(previous)
       setError(err instanceof Error ? err.message : '更新进程监控失败')

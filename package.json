@@ -7,7 +7,7 @@
     "build": "tsc && vite build",
     "preview": "vite preview",
     "tauri": "tauri",
-    "test": "tsc -p tsconfig.test.json && node .tmp-tests/services/libraryStats.test.js"
+    "test": "tsc -p tsconfig.test.json && node .tmp-tests/services/libraryStats.test.js && node .tmp-tests/services/launchService.test.js && node .tmp-tests/services/dashboardStats.test.js"
   },
   "dependencies": {
     "@tauri-apps/api": "^2.0.0",

@@ -2,7 +2,7 @@ mod commands;
 mod process_monitor;
 mod tray_manager;
 
-use commands::{get_running_processes, get_configured_processes, save_process_config, delete_process_config, update_tray_tooltip};
+use commands::{get_running_processes, get_configured_processes, save_process_config, delete_process_config, update_tray_tooltip, launch_game_exe};
 use process_monitor::SharedState;
 use std::sync::Arc;
 
@@ -23,6 +23,7 @@ pub fn run() {
             save_process_config,
             delete_process_config,
             update_tray_tooltip,
+            launch_game_exe,
         ])
         .setup(move |app| {
             let handle = app.handle().clone();
