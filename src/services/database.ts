@@ -1,6 +1,6 @@
 import initSqlJs, { type Database as SqlJsDatabase, type SqlJsStatic, type BindParams } from 'sql.js';
 import { CREATE_TABLES_SQL } from './dbSchema';
-import type { BackupData, Game, GameProcess, ImportResult, PlaySession } from '../types';
+import type { BackupData, BangumiSnapshot, Game, GameProcess, ImportResult, PlaySession } from '../types';
 
 declare global {
   interface Window { __TAURI_INTERNALS__?: unknown }
@@ -110,6 +110,21 @@ async function runMigrations(): Promise<void> {
   await executeRaw(
     'CREATE UNIQUE INDEX IF NOT EXISTS idx_game_processes_one_per_game ON game_processes(game_id)'
   );
+
+  await executeRaw(`
+    CREATE TABLE IF NOT EXISTS bangumi_meta (
+      game_id TEXT PRIMARY KEY,
+      subject_id INTEGER NOT NULL,
+      meta_json TEXT,
+      persons_json TEXT DEFAULT '[]',
+      characters_json TEXT DEFAULT '[]',
+      relations_json TEXT DEFAULT '[]',
+      episodes_json TEXT DEFAULT '[]',
+      collection_json TEXT,
+      synced_at INTEGER NOT NULL,
+      FOREIGN KEY (game_id) REFERENCES games(id) ON DELETE CASCADE
+    )
+  `);
 }
 
 async function selectRaw<T>(sql: string, params: unknown[] = []): Promise<T[]> {
@@ -166,6 +181,18 @@ interface DbProcessRow {
   enabled: number;
   created_at: number;
   updated_at: number;
+}
+
+interface DbBangumiMetaRow {
+  game_id: string;
+  subject_id: number;
+  meta_json: string | null;
+  persons_json: string;
+  characters_json: string;
+  relations_json: string;
+  episodes_json: string;
+  collection_json: string | null;
+  synced_at: number;
 }
 
 function parseJson<T>(value: string | null | undefined, fallback: T): T {
@@ -228,6 +255,46 @@ export async function loadGameProcesses(): Promise<GameProcess[]> {
   if (initPromise) await initPromise;
   const rows = await selectRaw<DbProcessRow>('SELECT * FROM game_processes ORDER BY created_at DESC');
   return rows.map(deserializeProcess);
+}
+
+function deserializeBangumiSnapshot(row: DbBangumiMetaRow): BangumiSnapshot {
+  return {
+    game_id: row.game_id,
+    meta: parseJson(row.meta_json, null),
+    persons: parseJson(row.persons_json, []),
+    characters: parseJson(row.characters_json, []),
+    relations: parseJson(row.relations_json, []),
+    episodes: parseJson(row.episodes_json, []),
+    collection: parseJson(row.collection_json, null),
+    synced_at: row.synced_at,
+  };
+}
+
+export async function loadBangumiSnapshot(gameId: string): Promise<BangumiSnapshot | null> {
+  if (initPromise) await initPromise;
+  const rows = await selectRaw<DbBangumiMetaRow>('SELECT * FROM bangumi_meta WHERE game_id = ?', [gameId]);
+  return rows[0] ? deserializeBangumiSnapshot(rows[0]) : null;
+}
+
+export async function saveBangumiSnapshot(snapshot: BangumiSnapshot): Promise<void> {
+  if (initPromise) await initPromise;
+  const subjectId = snapshot.meta?.subject_id || Number(snapshot.game_id);
+  await executeRaw(
+    `INSERT OR REPLACE INTO bangumi_meta (game_id, subject_id, meta_json, persons_json, characters_json, relations_json, episodes_json, collection_json, synced_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      snapshot.game_id,
+      subjectId,
+      snapshot.meta ? JSON.stringify(snapshot.meta) : null,
+      JSON.stringify(snapshot.persons),
+      JSON.stringify(snapshot.characters),
+      JSON.stringify(snapshot.relations),
+      JSON.stringify(snapshot.episodes),
+      snapshot.collection ? JSON.stringify(snapshot.collection) : null,
+      snapshot.synced_at,
+    ]
+  );
+  persistBrowserDb();
 }
 
 export async function addManualPlaySession(

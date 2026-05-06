@@ -14,7 +14,8 @@ export interface RouteProgress {
   percent: number
 }
 
-export type GameSortMode = 'updated_desc' | 'title_asc' | 'playtime_desc' | 'last_played_desc' | 'rating_desc' | 'completed_desc'
+export type GameSortField = 'updated' | 'title' | 'playtime' | 'last_played' | 'rating' | 'completed'
+export type SortDirection = 'asc' | 'desc'
 
 export type GameActionKey = 'rating' | 'tags' | 'review' | 'completed_at' | 'routes'
 
@@ -114,13 +115,22 @@ export function enrichGames(games: Game[], summaries: Record<string, SessionSumm
   })
 }
 
-export function sortLibraryGames(games: LibraryGame[], mode: GameSortMode): LibraryGame[] {
+export function sortLibraryGames(games: LibraryGame[], field: GameSortField, direction: SortDirection): LibraryGame[] {
   return [...games].sort((a, b) => {
-    if (mode === 'title_asc') return (a.name_cn || a.name).localeCompare(b.name_cn || b.name, 'zh-Hans-CN')
-    if (mode === 'playtime_desc') return b.total_seconds - a.total_seconds
-    if (mode === 'last_played_desc') return (b.last_played_at ?? 0) - (a.last_played_at ?? 0)
-    if (mode === 'rating_desc') return (b.rating ?? 0) - (a.rating ?? 0)
-    if (mode === 'completed_desc') return (b.completed_at ?? 0) - (a.completed_at ?? 0)
-    return b.updated_at - a.updated_at
+    let cmp: number
+    if (field === 'title') {
+      cmp = (a.name_cn || a.name).localeCompare(b.name_cn || b.name, 'zh-Hans-CN')
+    } else if (field === 'playtime') {
+      cmp = a.total_seconds - b.total_seconds
+    } else if (field === 'last_played') {
+      cmp = (a.last_played_at ?? 0) - (b.last_played_at ?? 0)
+    } else if (field === 'rating') {
+      cmp = (a.rating ?? 0) - (b.rating ?? 0)
+    } else if (field === 'completed') {
+      cmp = (a.completed_at ?? 0) - (b.completed_at ?? 0)
+    } else {
+      cmp = a.updated_at - b.updated_at
+    }
+    return direction === 'asc' ? cmp : -cmp
   })
 }

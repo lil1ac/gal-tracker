@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { ThemeProvider } from './context/ThemeContext'
 import { ThemeToggle } from './components/ThemeToggle'
 import { Sidebar } from './components/Sidebar'
@@ -14,17 +14,17 @@ import { syncAllProcessConfigs } from './services/processService'
 import { useProcessMonitor } from './hooks/useProcessMonitor'
 import type { GameActionKey } from './services/libraryStats'
 import type { Game } from './types'
+import { VIEW_TITLES } from './types'
 import './styles/themes.css'
 
 function AppContent() {
   const [showSearch, setShowSearch] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
-  const [activeView, setActiveView] = useState<'dashboard' | 'library'>('dashboard')
+  const [activeView, setActiveView] = useState<'dashboard' | 'library' | 'browse' | 'memory'>('dashboard')
   const [detailFocusTarget, setDetailFocusTarget] = useState<GameActionKey | null>(null)
   const [ready, setReady] = useState(false)
   const [startupError, setStartupError] = useState<string | null>(null)
-  const { load, setSearchQuery, selectedGame, setSelectedGame, sortMode, setSortMode, lastError, clearError } = useGameStore()
-  const searchInputRef = useRef<HTMLInputElement>(null)
+  const { load, selectedGame, setSelectedGame, setFilterStatus, lastError, clearError } = useGameStore()
   const processMonitor = useProcessMonitor()
 
   useEffect(() => {
@@ -51,9 +51,6 @@ function AppContent() {
         setSelectedGame(null)
       }
     },
-    onSearch: () => {
-      searchInputRef.current?.focus()
-    },
   })
 
   const handleOpenSettings = () => {
@@ -72,6 +69,21 @@ function AppContent() {
   const handleOpenLibrary = () => {
     setActiveView('library')
     setShowSettings(false)
+    setFilterStatus('all')
+  }
+
+  const handleOpenBrowse = () => {
+    setActiveView('browse')
+    setShowSettings(false)
+    setDetailFocusTarget(null)
+    setSelectedGame(null)
+  }
+
+  const handleOpenMemory = () => {
+    setActiveView('memory')
+    setShowSettings(false)
+    setDetailFocusTarget(null)
+    setSelectedGame(null)
   }
 
   const handleBack = () => {
@@ -112,6 +124,8 @@ function AppContent() {
         onOpenSettings={handleOpenSettings}
         onOpenDashboard={handleOpenDashboard}
         onOpenLibrary={handleOpenLibrary}
+        onOpenBrowse={handleOpenBrowse}
+        onOpenMemory={handleOpenMemory}
         activeView={activeView}
       />
       <div className="flex-1 flex flex-col min-w-0">
@@ -128,34 +142,10 @@ function AppContent() {
         ) : (
           <>
             <header className="h-14 px-5 flex items-center justify-between border-b border-[var(--border)] bg-[var(--bg-secondary)] shrink-0">
-              <div className="relative">
-                <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-secondary)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                </svg>
-                <input
-                  ref={searchInputRef}
-                  type="text"
-                  placeholder="搜索游戏... (按 / 聚焦)"
-                  className="field w-64 py-1.5 pl-9"
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                />
-              </div>
+              <h2 className="text-sm font-semibold text-[var(--text-primary)]">
+                {VIEW_TITLES[activeView]}
+              </h2>
               <div className="flex items-center gap-2">
-                {activeView === 'library' && (
-                  <select
-                    title="排序"
-                    value={sortMode}
-                    onChange={(e) => setSortMode(e.target.value as typeof sortMode)}
-                    className="field w-auto py-1.5"
-                  >
-                    <option value="updated_desc">最近更新</option>
-                    <option value="title_asc">标题</option>
-                    <option value="playtime_desc">游玩时长</option>
-                    <option value="last_played_desc">最近游玩</option>
-                    <option value="rating_desc">评分</option>
-                    <option value="completed_desc">通关时间</option>
-                  </select>
-                )}
                 <ThemeToggle />
                 <button
                   type="button"

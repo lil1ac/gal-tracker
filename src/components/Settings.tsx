@@ -1,16 +1,18 @@
 import { useState, useEffect } from 'react'
-import { useTheme } from '../context/ThemeContext'
+import { useTheme, ACCENT_PALETTES, type AccentId } from '../context/ThemeContext'
 import { setApiKey } from '../services/bangumiApi'
 import { exportData, importData, getSetting, setSetting, deleteSetting } from '../services/database'
 import { useGameStore } from '../store/gameStore'
+import { getMyBangumiUser, getUserGameCollections } from '../services/bangumiMeta'
+import { collectionToGame, getCollectionSubjectId, mergeCollectionIntoGame } from '../services/bangumiSync'
 
 interface SettingsProps {
   onClose: () => void
 }
 
 export function Settings({ onClose }: SettingsProps) {
-  const { theme, setTheme } = useTheme()
-  const { load } = useGameStore()
+  const { theme, setTheme, accentId, setAccentId } = useTheme()
+  const { load, games, addGame, updateGame } = useGameStore()
   const [apiKey, setApiKeyState] = useState('')
   const [saved, setSaved] = useState(false)
   const [message, setMessage] = useState('')
@@ -91,6 +93,37 @@ export function Settings({ onClose }: SettingsProps) {
     }
   }
 
+  const handleBangumiImport = async () => {
+    setBusy('bangumi-import')
+    setMessage('')
+    try {
+      const user = await getMyBangumiUser()
+      const collections = await getUserGameCollections(user.username)
+      let added = 0
+      let updated = 0
+      for (const collection of collections) {
+        const subjectId = getCollectionSubjectId(collection)
+        if (!subjectId) continue
+        const existing = games.find(game => game.id === String(subjectId))
+        if (existing) {
+          await updateGame(existing.id, mergeCollectionIntoGame(existing, collection))
+          updated += 1
+        } else {
+          const game = collectionToGame(collection)
+          if (!game) continue
+          await addGame(game)
+          added += 1
+        }
+      }
+      await load()
+      setMessage(`Bangumi 收藏导入完成：新增 ${added} 个，更新 ${updated} 个`)
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'Bangumi 收藏导入失败，请检查 Access Token')
+    } finally {
+      setBusy('')
+    }
+  }
+
   return (
     <div className="flex-1 flex flex-col bg-[var(--bg-primary)]">
       <div className="h-14 px-5 flex items-center border-b border-[var(--border)] bg-[var(--bg-secondary)] shrink-0">
@@ -145,6 +178,21 @@ export function Settings({ onClose }: SettingsProps) {
           </div>
         </section>
 
+        <section className="mb-8">
+          <h2 className="text-sm font-semibold mb-1">Bangumi 收藏同步</h2>
+          <p className="text-xs text-[var(--text-secondary)] mb-3">
+            使用已保存的 Access Token 从 Bangumi 导入游戏收藏；详情页可把本地状态、评分、短评和标签同步回 Bangumi。
+          </p>
+          <button
+            type="button"
+            disabled={busy === 'bangumi-import'}
+            onClick={handleBangumiImport}
+            className="btn btn-primary"
+          >
+            {busy === 'bangumi-import' ? '导入中...' : '从 Bangumi 导入收藏'}
+          </button>
+        </section>
+
         {/* Theme */}
         <section className="mb-8">
           <h2 className="text-sm font-semibold mb-3">主题</h2>
@@ -167,6 +215,46 @@ export function Settings({ onClose }: SettingsProps) {
                 {label}
               </button>
             ))}
+          </div>
+        </section>
+
+        {/* Accent Color */}
+        <section className="mb-8">
+          <h2 className="text-sm font-semibold mb-1">主题色</h2>
+          <p className="text-xs text-[var(--text-secondary)] mb-3">
+            为应用界面选择配色方案
+          </p>
+          <div className="flex flex-wrap gap-3">
+            {(Object.entries(ACCENT_PALETTES) as [AccentId, typeof ACCENT_PALETTES[AccentId]][]).map(([id, palette]) => {
+              const selected = accentId === id
+              return (
+                <button
+                  key={id}
+                  type="button"
+                  onClick={() => setAccentId(id)}
+                  className="flex flex-col items-center gap-1.5 group"
+                  title={palette.label}
+                >
+                  <span
+                    className={`block w-9 h-9 rounded-full transition-all duration-200 ${
+                      selected
+                        ? 'ring-2 ring-offset-2 ring-[var(--accent)] ring-offset-[var(--bg-primary)] scale-110'
+                        : 'hover:scale-105'
+                    }`}
+                    style={{ background: palette.light.accent }}
+                  >
+                    {selected && (
+                      <svg className="w-full h-full p-2 text-white drop-shadow-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                      </svg>
+                    )}
+                  </span>
+                  <span className={`text-[11px] transition-colors ${selected ? 'text-[var(--text-primary)] font-medium' : 'text-[var(--text-secondary)]'}`}>
+                    {palette.label}
+                  </span>
+                </button>
+              )
+            })}
           </div>
         </section>
 

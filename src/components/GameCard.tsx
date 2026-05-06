@@ -5,16 +5,16 @@ interface GameCardProps {
   game: LibraryGame
 }
 
-const statusBadge: Record<string, { label: string; className: string }> = {
-  wish: { label: '想玩', className: 'bg-sky-100 text-sky-700 dark:bg-sky-900 dark:text-sky-300' },
-  playing: { label: '在玩', className: 'bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300' },
-  completed: { label: '已完成', className: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300' },
-  paused: { label: '搁置', className: 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400' },
+const STATUS_MAP: Record<string, { label: string; className: string }> = {
+  wish: { label: '想玩', className: 'status-wish' },
+  playing: { label: '在玩', className: 'status-playing' },
+  completed: { label: '已完成', className: 'status-completed' },
+  paused: { label: '搁置', className: 'status-paused' },
 }
 
 export function GameCard({ game }: GameCardProps) {
   const { setSelectedGame } = useGameStore()
-  const badge = statusBadge[game.status]
+  const badge = STATUS_MAP[game.status] ?? { label: game.status, className: '' }
 
   return (
     <div
@@ -34,7 +34,8 @@ export function GameCard({ game }: GameCardProps) {
             无封面
           </div>
         )}
-        <span className={`absolute top-2 right-2 px-1.5 py-0.5 rounded text-xs font-medium ${badge.className}`}>
+        <span className={`status-badge absolute top-2 right-2 ${badge.className}`}>
+          <span className="status-dot" />
           {badge.label}
         </span>
         {game.current_running && (

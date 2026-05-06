@@ -1,40 +1,21 @@
-import { GameStatus } from '../types'
 import { useGameStore } from '../store/gameStore'
-
-const statusLabels: Record<GameStatus | 'all', string> = {
-  all: '全部',
-  wish: '想玩',
-  playing: '在玩',
-  completed: '已完成',
-  paused: '搁置',
-}
-
-const statusIcons: Record<GameStatus | 'all', string> = {
-  all: 'ALL',
-  wish: 'W',
-  playing: 'P',
-  completed: 'C',
-  paused: 'H',
-}
+import { VIEW_TITLES } from '../types'
 
 interface SidebarProps {
   onOpenSettings: () => void
   onOpenDashboard: () => void
   onOpenLibrary: () => void
-  activeView: 'dashboard' | 'library'
+  onOpenBrowse: () => void
+  onOpenMemory: () => void
+  activeView: 'dashboard' | 'library' | 'browse' | 'memory'
 }
 
-export function Sidebar({ onOpenSettings, onOpenDashboard, onOpenLibrary, activeView }: SidebarProps) {
-  const { games, filterStatus, setFilterStatus, viewMode, setViewMode, setSelectedGame } = useGameStore()
+export function Sidebar({ onOpenSettings, onOpenDashboard, onOpenLibrary, onOpenBrowse, onOpenMemory, activeView }: SidebarProps) {
+  const { games } = useGameStore()
 
   const totalGames = games.length
   const completedCount = games.filter(g => g.status === 'completed').length
   const playingCount = games.filter(g => g.status === 'playing').length
-
-  const statusCounts = games.reduce((acc, game) => {
-    acc[game.status] = (acc[game.status] || 0) + 1
-    return acc
-  }, {} as Record<GameStatus, number>)
 
   return (
     <div className="w-52 bg-[var(--bg-secondary)] border-r border-[var(--border)] flex flex-col shrink-0">
@@ -57,32 +38,52 @@ export function Sidebar({ onOpenSettings, onOpenDashboard, onOpenLibrary, active
         >
           <span className="flex items-center gap-2">
             <span className="text-[10px] font-semibold tracking-wider">DB</span>
-            <span>总览</span>
+            <span>{VIEW_TITLES.dashboard}</span>
           </span>
         </button>
-        {(Object.keys(statusLabels) as (GameStatus | 'all')[]).map((status) => {
-          const count = status === 'all' ? totalGames : (statusCounts[status as GameStatus] || 0)
-          const active = activeView === 'library' && filterStatus === status
-          return (
-            <button
-              key={status}
-              onClick={() => { setFilterStatus(status); setSelectedGame(null); onOpenLibrary() }}
-              className={`flex items-center justify-between px-3 py-2 rounded-md text-sm transition-colors ${
-                active
-                  ? 'bg-[var(--accent-soft)] text-[var(--accent)] font-medium'
-                  : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-primary)]'
-              }`}
-            >
-              <span className="flex items-center gap-2">
-                <span className="w-5 text-[10px] font-semibold tracking-wider text-[var(--text-secondary)]">{statusIcons[status]}</span>
-                <span>{statusLabels[status]}</span>
-              </span>
-              <span className={`text-xs tabular-nums ${active ? 'text-[var(--accent)]' : ''}`}>
-                {count}
-              </span>
-            </button>
-          )
-        })}
+        <button
+          type="button"
+          onClick={onOpenBrowse}
+          className={`flex items-center justify-between px-3 py-2 rounded-md text-sm transition-colors ${
+            activeView === 'browse'
+              ? 'bg-[var(--accent-soft)] text-[var(--accent)] font-medium'
+              : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-primary)]'
+          }`}
+        >
+          <span className="flex items-center gap-2">
+            <span className="text-[10px] font-semibold tracking-wider">BR</span>
+            <span>{VIEW_TITLES.browse}</span>
+          </span>
+        </button>
+        <button
+          type="button"
+          onClick={onOpenMemory}
+          className={`flex items-center justify-between px-3 py-2 rounded-md text-sm transition-colors ${
+            activeView === 'memory'
+              ? 'bg-[var(--accent-soft)] text-[var(--accent)] font-medium'
+              : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-primary)]'
+          }`}
+        >
+          <span className="flex items-center gap-2">
+            <span className="text-[10px] font-semibold tracking-wider">MEM</span>
+            <span>{VIEW_TITLES.memory}</span>
+          </span>
+        </button>
+        <button
+          type="button"
+          onClick={onOpenLibrary}
+          className={`flex items-center justify-between px-3 py-2 rounded-md text-sm transition-colors ${
+            activeView === 'library'
+              ? 'bg-[var(--accent-soft)] text-[var(--accent)] font-medium'
+              : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-primary)]'
+          }`}
+        >
+          <span className="flex items-center gap-2">
+            <span className="text-[10px] font-semibold tracking-wider">LIB</span>
+            <span>{VIEW_TITLES.library}</span>
+          </span>
+          <span className="text-xs tabular-nums">{totalGames}</span>
+        </button>
       </nav>
 
       <div className="mx-3 p-3 rounded-lg bg-[var(--bg-primary)]">
@@ -103,32 +104,7 @@ export function Sidebar({ onOpenSettings, onOpenDashboard, onOpenLibrary, active
         </div>
       </div>
 
-      <div className="mt-auto p-3 space-y-2">
-        <div className="flex rounded-md bg-[var(--bg-primary)] p-0.5">
-          <button
-            type="button"
-            onClick={() => setViewMode('card')}
-            className={`flex-1 py-1.5 text-xs rounded font-medium transition-colors ${
-              viewMode === 'card'
-                ? 'bg-[var(--bg-secondary)] text-[var(--accent)] shadow-sm'
-                : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
-            }`}
-          >
-            卡片
-          </button>
-          <button
-            type="button"
-            onClick={() => setViewMode('list')}
-            className={`flex-1 py-1.5 text-xs rounded font-medium transition-colors ${
-              viewMode === 'list'
-                ? 'bg-[var(--bg-secondary)] text-[var(--accent)] shadow-sm'
-                : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
-            }`}
-          >
-            列表
-          </button>
-        </div>
-
+      <div className="mt-auto p-3">
         <button
           type="button"
           onClick={onOpenSettings}

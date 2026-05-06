@@ -4,7 +4,8 @@ import { addManualPlaySession, deletePlaySession, loadGames, loadPlaySessions, e
 import {
   buildSessionSummaryMap,
   enrichGames,
-  GameSortMode,
+  GameSortField,
+  SortDirection,
   LibraryGame,
   SessionSummary,
   sortLibraryGames,
@@ -17,7 +18,8 @@ interface GameStore {
   selectedGame: Game | null
   filterStatus: GameStatus | 'all'
   viewMode: 'card' | 'list'
-  sortMode: GameSortMode
+  sortField: GameSortField
+  sortDirection: SortDirection
   searchQuery: string
   lastError: string | null
 
@@ -30,7 +32,8 @@ interface GameStore {
   setSelectedGame: (game: Game | null) => void
   setFilterStatus: (status: GameStatus | 'all') => void
   setViewMode: (mode: 'card' | 'list') => void
-  setSortMode: (mode: GameSortMode) => void
+  setSortField: (field: GameSortField) => void
+  setSortDirection: (dir: SortDirection) => void
   setSearchQuery: (query: string) => void
   clearError: () => void
   libraryGames: () => LibraryGame[]
@@ -44,7 +47,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
   selectedGame: null,
   filterStatus: 'all',
   viewMode: 'card',
-  sortMode: 'updated_desc',
+  sortField: 'updated',
+  sortDirection: 'desc',
   searchQuery: '',
   lastError: null,
 
@@ -174,13 +178,14 @@ export const useGameStore = create<GameStore>((set, get) => ({
   setSelectedGame: (game) => set({ selectedGame: game }),
   setFilterStatus: (status) => set({ filterStatus: status }),
   setViewMode: (mode) => set({ viewMode: mode }),
-  setSortMode: (mode) => set({ sortMode: mode }),
+  setSortField: (field) => set({ sortField: field }),
+  setSortDirection: (dir) => set({ sortDirection: dir }),
   setSearchQuery: (query) => set({ searchQuery: query }),
   clearError: () => set({ lastError: null }),
 
   libraryGames: () => {
-    const { games, sessionSummaries, sortMode } = get()
-    return sortLibraryGames(enrichGames(games, sessionSummaries), sortMode)
+    const { games, sessionSummaries, sortField, sortDirection } = get()
+    return sortLibraryGames(enrichGames(games, sessionSummaries), sortField, sortDirection)
   },
 
   filteredGames: () => {

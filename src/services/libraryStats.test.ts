@@ -96,7 +96,7 @@ test('sortLibraryGames sorts by playtime descending', () => {
   const sorted = sortLibraryGames([
     { ...base, id: 'short', name: 'Short', total_seconds: 60 },
     { ...base, id: 'long', name: 'Long', total_seconds: 3600 },
-  ], 'playtime_desc')
+  ], 'playtime', 'desc')
 
   assert.equal(sorted[0].id, 'long')
 })
@@ -129,7 +129,7 @@ test('sortLibraryGames sorts completed games by completion date descending', () 
   const sorted = sortLibraryGames([
     { ...base, id: 'older', name: 'Older', completed_at: 1000 },
     { ...base, id: 'newer', name: 'Newer', completed_at: 2000 },
-  ], 'completed_desc')
+  ], 'completed', 'desc')
 
   assert.equal(sorted[0].id, 'newer')
 })

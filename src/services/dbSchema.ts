@@ -66,4 +66,17 @@ CREATE TABLE IF NOT EXISTS settings (
   key TEXT PRIMARY KEY,
   value TEXT NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS bangumi_meta (
+  game_id TEXT PRIMARY KEY,
+  subject_id INTEGER NOT NULL,
+  meta_json TEXT,
+  persons_json TEXT DEFAULT '[]',
+  characters_json TEXT DEFAULT '[]',
+  relations_json TEXT DEFAULT '[]',
+  episodes_json TEXT DEFAULT '[]',
+  collection_json TEXT,
+  synced_at INTEGER NOT NULL,
+  FOREIGN KEY (game_id) REFERENCES games(id) ON DELETE CASCADE
+);
 `;

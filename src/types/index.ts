@@ -1,5 +1,14 @@
 export type GameStatus = 'wish' | 'playing' | 'completed' | 'paused'
 
+export type ViewId = 'dashboard' | 'library' | 'browse' | 'memory'
+
+export const VIEW_TITLES: Record<ViewId, string> = {
+  dashboard: '总览',
+  library: '库',
+  browse: '浏览',
+  memory: '回忆',
+}
+
 export type EndReason = 'process_exit' | 'user_stop' | 'app_close' | 'too_short' | 'error' | 'app_crash'
 
 export type MatchType = 'process_name' | 'exe_path' | 'name_and_path'
@@ -68,6 +77,175 @@ export interface BangumiSubject {
   cover: string
   air_date: string | null
   platform: string[]
+  score: number | null
+  rank: number | null
+}
+
+export interface BangumiRating {
+  score: number | null
+  total: number
+  count: Record<string, number>
+}
+
+export interface BangumiCollectionStats {
+  wish: number
+  doing: number
+  collect: number
+  on_hold: number
+  dropped: number
+}
+
+export interface BangumiTag {
+  name: string
+  count: number
+}
+
+export interface BangumiSubjectMeta {
+  subject_id: number
+  title: string
+  title_cn: string | null
+  summary: string
+  cover_url: string
+  air_date: string | null
+  platform: string[]
+  score: number | null
+  rank: number | null
+  rating: BangumiRating
+  collection: BangumiCollectionStats
+  tags: BangumiTag[]
+  meta_tags: string[]
+  url: string
+  synced_at: number
+}
+
+export interface BangumiRelatedSubject {
+  id: number
+  name: string
+  name_cn: string | null
+  relation: string
+  type: number
+  cover_url: string
+}
+
+export interface BangumiRelatedPerson {
+  id: number
+  name: string
+  relation: string
+  career: string[]
+  images?: Record<string, string>
+}
+
+export interface BangumiRelatedCharacter {
+  id: number
+  name: string
+  relation: string
+  actors: BangumiRelatedPerson[]
+  images?: Record<string, string>
+}
+
+export type BangumiEntityKind = 'character' | 'person' | 'subject'
+
+export interface BangumiInfoItem {
+  key: string
+  value: string
+}
+
+export interface BangumiCharacterDetail {
+  id: number
+  name: string
+  summary: string
+  image: string
+  collects: number
+  comments: number
+  info: BangumiInfoItem[]
+  url: string
+}
+
+export interface BangumiPersonDetail {
+  id: number
+  name: string
+  summary: string
+  image: string
+  career: string[]
+  collects: number
+  comments: number
+  info: BangumiInfoItem[]
+  url: string
+}
+
+export interface BangumiEntitySubject extends BangumiRelatedSubject {
+  score: number | null
+  rank: number | null
+  air_date: string | null
+}
+
+export interface BangumiEntityCharacter {
+  id: number
+  name: string
+  relation: string
+  image: string
+  subjectNames: string[]
+  url: string
+}
+
+export interface BangumiCharacterPageData {
+  kind: 'character'
+  detail: BangumiCharacterDetail
+  subjects: BangumiEntitySubject[]
+  persons: BangumiRelatedPerson[]
+}
+
+export interface BangumiPersonPageData {
+  kind: 'person'
+  detail: BangumiPersonDetail
+  subjects: BangumiEntitySubject[]
+  characters: BangumiEntityCharacter[]
+}
+
+export type BangumiEntityPageData = BangumiCharacterPageData | BangumiPersonPageData
+
+export interface BangumiEpisode {
+  id: number
+  name: string
+  name_cn: string | null
+  type: number
+  sort: number
+}
+
+export interface BangumiCollectionItem {
+  subject_id?: number
+  subject?: Record<string, unknown>
+  type: number
+  rate: number
+  comment: string
+  tags: string[]
+  private?: boolean
+  updated_at?: string
+}
+
+export interface BangumiSnapshot {
+  game_id: string
+  meta: BangumiSubjectMeta | null
+  persons: BangumiRelatedPerson[]
+  characters: BangumiRelatedCharacter[]
+  relations: BangumiRelatedSubject[]
+  episodes: BangumiEpisode[]
+  collection: BangumiCollectionItem | null
+  synced_at: number
+}
+
+export type BrowseCategory = 'top_ranked' | 'popular' | 'latest'
+
+export interface BrowseFilterState {
+  category: BrowseCategory
+  keyword: string
+  sort: 'match' | 'heat' | 'rank' | 'score'
+  year: string
+  minScore: string
+  minRank: string
+  maxRank: string
+  tags: string[]
+  nsfw: boolean
 }
 
 // 运行中的进程信息
