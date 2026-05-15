@@ -1,5 +1,10 @@
 import type { BangumiCollectionItem, Game, GameStatus } from '../types'
 
+export interface BangumiSyncTarget {
+  game: Game
+  subjectId: number
+}
+
 const bangumiToLocalStatus: Record<number, GameStatus> = {
   1: 'wish',
   2: 'completed',
@@ -80,4 +85,20 @@ export function mergeCollectionIntoGame(game: Game, collection: Pick<BangumiColl
     completed_at: collection.type === 2 && !game.completed_at ? Date.now() : game.completed_at,
     updated_at: Date.now(),
   }
+}
+
+export function getBangumiSyncTargets(games: Game[]): { syncable: BangumiSyncTarget[]; skipped: Game[] } {
+  const syncable: BangumiSyncTarget[] = []
+  const skipped: Game[] = []
+
+  for (const game of games) {
+    const subjectId = Number(game.id)
+    if (Number.isFinite(subjectId) && subjectId > 0) {
+      syncable.push({ game, subjectId })
+    } else {
+      skipped.push(game)
+    }
+  }
+
+  return { syncable, skipped }
 }

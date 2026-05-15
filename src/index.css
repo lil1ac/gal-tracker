@@ -846,6 +846,77 @@ body {
     @apply h-3.5 w-3.5 accent-[var(--accent)];
   }
 
+  .settings-shell {
+    @apply flex-1 overflow-y-auto px-4 py-5 md:px-6;
+    background:
+      linear-gradient(180deg, color-mix(in srgb, var(--surface-subtle) 70%, transparent), transparent 22rem),
+      var(--bg-primary);
+  }
+
+  .settings-workbench {
+    @apply mx-auto max-w-3xl space-y-4;
+  }
+
+  .settings-message,
+  .settings-section {
+    @apply rounded-lg border;
+    border-color: color-mix(in srgb, var(--border) 82%, transparent);
+    background: var(--bg-secondary);
+    box-shadow: var(--shadow);
+  }
+
+  .settings-message {
+    @apply px-4 py-3 text-sm;
+    color: var(--text-primary);
+  }
+
+  .settings-section {
+    @apply p-4 md:p-5;
+  }
+
+  .settings-section-head {
+    @apply mb-3;
+  }
+
+  .settings-section-head h2 {
+    @apply text-sm font-semibold;
+  }
+
+  .settings-section-head p {
+    @apply mt-1 text-xs leading-5;
+    color: var(--text-secondary);
+  }
+
+  .settings-inline-form,
+  .settings-action-row {
+    @apply flex flex-wrap items-center gap-2;
+  }
+
+  .settings-accent-grid {
+    @apply flex flex-wrap gap-3;
+  }
+
+  .settings-accent {
+    @apply flex flex-col items-center gap-1.5;
+  }
+
+  .settings-accent span {
+    @apply block h-9 w-9 rounded-full transition-all duration-200;
+  }
+
+  .settings-accent span:not(.is-selected):hover {
+    transform: scale(1.05);
+  }
+
+  .settings-accent span.is-selected {
+    @apply scale-110 ring-2 ring-offset-2 ring-[var(--accent)] ring-offset-[var(--bg-primary)];
+  }
+
+  .settings-accent small {
+    @apply text-[11px];
+    color: var(--text-secondary);
+  }
+
   .session-timeline,
   .route-board,
   .resource-list {

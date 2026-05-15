@@ -3,6 +3,7 @@ import {
   bangumiCollectionTypeToGameStatus,
   buildCollectionPayload,
   gameStatusToBangumiCollectionType,
+  getBangumiSyncTargets,
   mergeCollectionIntoGame,
 } from './bangumiSync.js'
 import type { Game } from '../types/index.js'
@@ -26,6 +27,17 @@ const baseGame: Game = {
   completed_at: null,
   created_at: 1,
   updated_at: 1,
+}
+
+{
+  const targets = getBangumiSyncTargets([
+    baseGame,
+    { ...baseGame, id: 'local_custom_id', name: 'Local Only' },
+    { ...baseGame, id: '456', name: 'Numeric Subject' },
+  ])
+
+  assert.deepEqual(targets.syncable.map(item => item.subjectId), [123, 456])
+  assert.deepEqual(targets.skipped.map(game => game.id), ['local_custom_id'])
 }
 
 {

@@ -1,10 +1,16 @@
-import { useState, useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useTheme, ACCENT_PALETTES, type AccentId } from '../context/ThemeContext'
 import { setApiKey } from '../services/bangumiApi'
 import { exportData, importData, getSetting, setSetting, deleteSetting } from '../services/database'
 import { useGameStore } from '../store/gameStore'
-import { getMyBangumiUser, getUserGameCollections } from '../services/bangumiMeta'
-import { collectionToGame, getCollectionSubjectId, mergeCollectionIntoGame } from '../services/bangumiSync'
+import { getMyBangumiUser, getUserGameCollections, patchMyCollection } from '../services/bangumiMeta'
+import {
+  buildCollectionPayload,
+  collectionToGame,
+  getBangumiSyncTargets,
+  getCollectionSubjectId,
+  mergeCollectionIntoGame,
+} from '../services/bangumiSync'
 
 export function Settings() {
   const { theme, setTheme, accentId, setAccentId } = useTheme()
@@ -13,9 +19,12 @@ export function Settings() {
   const [saved, setSaved] = useState(false)
   const [message, setMessage] = useState('')
   const [busy, setBusy] = useState('')
+  const [syncPrivate, setSyncPrivate] = useState(false)
 
   useEffect(() => {
-    getSetting('bgm_api_key').then(k => { if (k) setApiKeyState(k) })
+    getSetting('bgm_api_key').then(key => {
+      if (key) setApiKeyState(key)
+    })
   }, [])
 
   const handleApiKeySave = async () => {
@@ -72,8 +81,8 @@ export function Settings() {
     }
   }
 
-  const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
+  const handleImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
     if (!file) return
     setBusy('import')
     try {
@@ -81,11 +90,11 @@ export function Settings() {
       const result = await importData(text)
       await load()
       setMessage(`导入完成：${result.games.length} 个游戏，${result.play_sessions.length} 条游玩记录，${result.game_processes.length} 个进程配置`)
-    } catch (err) {
+    } catch {
       setMessage('导入失败：文件格式错误')
     } finally {
       setBusy('')
-      e.target.value = ''
+      event.target.value = ''
     }
   }
 
@@ -120,26 +129,47 @@ export function Settings() {
     }
   }
 
+  const handleBangumiPush = async () => {
+    setBusy('bangumi-push')
+    setMessage('')
+    const { syncable, skipped } = getBangumiSyncTargets(games)
+    let synced = 0
+    let failed = 0
+    try {
+      for (const target of syncable) {
+        try {
+          await patchMyCollection(target.subjectId, buildCollectionPayload(target.game, syncPrivate))
+          synced += 1
+        } catch {
+          failed += 1
+        }
+      }
+      setMessage(`同步完成：成功 ${synced} 个，失败 ${failed} 个，跳过 ${skipped.length} 个非 Bangumi 条目`)
+    } finally {
+      setBusy('')
+    }
+  }
+
   return (
-    <div className="flex-1 overflow-y-auto bg-[var(--bg-primary)]">
-      <div className="p-8 max-w-2xl mx-auto">
+    <div className="settings-shell">
+      <div className="settings-workbench">
         {message && (
-          <div className="mb-6 rounded-md border border-[var(--border)] bg-[var(--surface-subtle)] px-4 py-3 text-sm text-[var(--text-primary)]">
+          <div className="settings-message">
             {message}
           </div>
         )}
-        {/* API Key */}
-        <section className="mb-8">
-          <h2 className="text-sm font-semibold mb-1">Bangumi API Key</h2>
-          <p className="text-xs text-[var(--text-secondary)] mb-3">
-            用于提高 Bangumi API 请求频率限制，可在 bgm.tv 设置页面获取
-          </p>
-          <div className="flex gap-2">
+
+        <section className="settings-section">
+          <div className="settings-section-head">
+            <h2>Bangumi Access Token</h2>
+            <p>用于访问私有收藏、吐槽分页和收藏同步能力。Token 只保存在本地数据库中。</p>
+          </div>
+          <div className="settings-inline-form">
             <input
               type="password"
               value={apiKey}
-              onChange={(e) => setApiKeyState(e.target.value)}
-              placeholder="输入你的 API Key"
+              onChange={(event) => setApiKeyState(event.target.value)}
+              placeholder="输入你的 Bangumi Access Token"
               className="field flex-1"
             />
             <button
@@ -148,7 +178,7 @@ export function Settings() {
               onClick={handleApiKeySave}
               className="btn btn-primary"
             >
-              {busy === 'api' ? '保存中' : saved ? '已保存' : '保存'}
+              {busy === 'api' ? '保存中...' : saved ? '已保存' : '保存'}
             </button>
             <button
               type="button"
@@ -161,25 +191,44 @@ export function Settings() {
           </div>
         </section>
 
-        <section className="mb-8">
-          <h2 className="text-sm font-semibold mb-1">Bangumi 收藏同步</h2>
-          <p className="text-xs text-[var(--text-secondary)] mb-3">
-            使用已保存的 Access Token 从 Bangumi 导入游戏收藏；详情页可把本地状态、评分、短评和标签同步回 Bangumi。
-          </p>
-          <button
-            type="button"
-            disabled={busy === 'bangumi-import'}
-            onClick={handleBangumiImport}
-            className="btn btn-primary"
-          >
-            {busy === 'bangumi-import' ? '导入中...' : '从 Bangumi 导入收藏'}
-          </button>
+        <section className="settings-section">
+          <div className="settings-section-head">
+            <h2>Bangumi 收藏同步</h2>
+            <p>从 Bangumi 拉取收藏，或把本地库的状态、评分、短评和标签批量同步回 Bangumi。</p>
+          </div>
+          <div className="settings-action-row">
+            <button
+              type="button"
+              disabled={busy === 'bangumi-import'}
+              onClick={handleBangumiImport}
+              className="btn btn-primary"
+            >
+              {busy === 'bangumi-import' ? '导入中...' : '从 Bangumi 导入收藏'}
+            </button>
+            <label className="bangumi-sync-private">
+              <input
+                type="checkbox"
+                checked={syncPrivate}
+                onChange={event => setSyncPrivate(event.target.checked)}
+              />
+              同步为私密收藏
+            </label>
+            <button
+              type="button"
+              disabled={busy === 'bangumi-push' || games.length === 0}
+              onClick={handleBangumiPush}
+              className="btn btn-secondary"
+            >
+              {busy === 'bangumi-push' ? '同步中...' : '同步本地库到 Bangumi'}
+            </button>
+          </div>
         </section>
 
-        {/* Theme */}
-        <section className="mb-8">
-          <h2 className="text-sm font-semibold mb-3">主题</h2>
-          <div className="flex gap-2">
+        <section className="settings-section">
+          <div className="settings-section-head">
+            <h2>主题</h2>
+          </div>
+          <div className="settings-action-row">
             {([
               { key: 'light' as const, label: '浅色' },
               { key: 'dark' as const, label: '深色' },
@@ -189,11 +238,7 @@ export function Settings() {
                 key={key}
                 type="button"
                 onClick={() => setTheme(key)}
-                className={`btn ${
-                  theme === key
-                    ? 'btn-primary'
-                    : 'btn-secondary'
-                }`}
+                className={`btn ${theme === key ? 'btn-primary' : 'btn-secondary'}`}
               >
                 {label}
               </button>
@@ -201,13 +246,12 @@ export function Settings() {
           </div>
         </section>
 
-        {/* Accent Color */}
-        <section className="mb-8">
-          <h2 className="text-sm font-semibold mb-1">主题色</h2>
-          <p className="text-xs text-[var(--text-secondary)] mb-3">
-            为应用界面选择配色方案
-          </p>
-          <div className="flex flex-wrap gap-3">
+        <section className="settings-section">
+          <div className="settings-section-head">
+            <h2>主题色</h2>
+            <p>为应用界面选择配色方案。</p>
+          </div>
+          <div className="settings-accent-grid">
             {(Object.entries(ACCENT_PALETTES) as [AccentId, typeof ACCENT_PALETTES[AccentId]][]).map(([id, palette]) => {
               const selected = accentId === id
               return (
@@ -215,60 +259,52 @@ export function Settings() {
                   key={id}
                   type="button"
                   onClick={() => setAccentId(id)}
-                  className="flex flex-col items-center gap-1.5 group"
+                  className="settings-accent"
                   title={palette.label}
                 >
                   <span
-                    className={`block w-9 h-9 rounded-full transition-all duration-200 ${
-                      selected
-                        ? 'ring-2 ring-offset-2 ring-[var(--accent)] ring-offset-[var(--bg-primary)] scale-110'
-                        : 'hover:scale-105'
-                    }`}
+                    className={selected ? 'is-selected' : ''}
                     style={{ background: palette.light.accent }}
                   >
                     {selected && (
-                      <svg className="w-full h-full p-2 text-white drop-shadow-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3}>
+                      <svg className="h-full w-full p-2 text-white drop-shadow-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                       </svg>
                     )}
                   </span>
-                  <span className={`text-[11px] transition-colors ${selected ? 'text-[var(--text-primary)] font-medium' : 'text-[var(--text-secondary)]'}`}>
-                    {palette.label}
-                  </span>
+                  <small>{palette.label}</small>
                 </button>
               )
             })}
           </div>
         </section>
 
-        {/* Data */}
-        <section className="mb-8">
-          <h2 className="text-sm font-semibold mb-1">数据管理</h2>
-          <p className="text-xs text-[var(--text-secondary)] mb-3">
-            导出为 JSON 文件备份，或从 JSON 文件恢复数据
-          </p>
-          <div className="flex gap-2">
+        <section className="settings-section">
+          <div className="settings-section-head">
+            <h2>数据管理</h2>
+            <p>导出 JSON 文件备份，或从 JSON 文件恢复数据。</p>
+          </div>
+          <div className="settings-action-row">
             <button
               type="button"
               disabled={busy === 'export'}
               onClick={handleExport}
               className="btn btn-primary"
             >
-              {busy === 'export' ? '导出中' : '导出数据'}
+              {busy === 'export' ? '导出中...' : '导出数据'}
             </button>
             <label className={`btn btn-secondary ${busy === 'import' ? 'pointer-events-none opacity-60' : 'cursor-pointer'}`}>
-              {busy === 'import' ? '导入中' : '导入数据'}
+              {busy === 'import' ? '导入中...' : '导入数据'}
               <input type="file" accept=".json" onChange={handleImport} className="hidden" />
             </label>
           </div>
         </section>
 
-        {/* About */}
-        <section>
-          <h2 className="text-sm font-semibold mb-1">关于</h2>
-          <p className="text-xs text-[var(--text-secondary)]">
-            GAL Tracker v0.1.0 · 视觉小说游戏游玩记录工具
-          </p>
+        <section className="settings-section">
+          <div className="settings-section-head">
+            <h2>关于</h2>
+            <p>GAL Tracker v0.1.0，视觉小说游戏游玩记录工具。</p>
+          </div>
         </section>
       </div>
     </div>
