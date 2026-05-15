@@ -1,6 +1,13 @@
 import initSqlJs, { type Database as SqlJsDatabase, type SqlJsStatic, type BindParams } from 'sql.js';
 import { CREATE_TABLES_SQL } from './dbSchema';
-import type { BackupData, BangumiSnapshot, Game, GameProcess, ImportResult, PlaySession } from '../types';
+import type {
+  BackupData,
+  BangumiSnapshot,
+  Game,
+  GameProcess,
+  ImportResult,
+  PlaySession,
+} from '../types';
 
 declare global {
   interface Window { __TAURI_INTERNALS__?: unknown }
@@ -125,6 +132,7 @@ async function runMigrations(): Promise<void> {
       FOREIGN KEY (game_id) REFERENCES games(id) ON DELETE CASCADE
     )
   `);
+
 }
 
 async function selectRaw<T>(sql: string, params: unknown[] = []): Promise<T[]> {

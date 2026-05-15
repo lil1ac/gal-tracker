@@ -4,6 +4,7 @@ import {
   mapBangumiCharacterDetail,
   mapBangumiEntityCharacter,
   mapBangumiEntitySubject,
+  mergeBangumiEntitySubjectCover,
   mapBangumiPersonDetail,
 } from './bangumiEntity.js'
 
@@ -84,6 +85,34 @@ import {
       air_date: '2004-04-28',
     }
   )
+}
+
+{
+  assert.equal(
+    mapBangumiEntitySubject({
+      subject: {
+        id: 14,
+        type: 4,
+        name: 'Wrapped Game',
+        name_cn: '',
+        rating: { score: 7.6 },
+      },
+      images: { grid: 'fallback-grid.jpg' },
+      relation: '出演',
+    }).cover_url,
+    'fallback-grid.jpg'
+  )
+}
+
+{
+  const subject = mapBangumiEntitySubject({
+    id: 15,
+    type: 4,
+    name: 'Missing Cover',
+    images: {},
+  })
+  assert.equal(subject.cover_url, '')
+  assert.equal(mergeBangumiEntitySubjectCover(subject, { images: { large: 'detail-large.jpg' } }).cover_url, 'detail-large.jpg')
 }
 
 {

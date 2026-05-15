@@ -520,6 +520,349 @@ body {
     box-shadow: var(--shadow-md);
   }
 
+  .detail-workbench {
+    @apply flex-1 min-w-0 overflow-y-auto;
+    background:
+      linear-gradient(180deg, color-mix(in srgb, var(--surface-subtle) 62%, transparent), transparent 26rem),
+      var(--bg-primary);
+  }
+
+  .detail-delete-confirm {
+    @apply flex items-center gap-2 text-sm;
+    color: var(--text-secondary);
+  }
+
+  .detail-running-chip {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg border px-3 py-2 text-xs;
+    border-color: rgba(16,185,129,0.28);
+    background: rgba(16,185,129,0.08);
+    color: #10b981;
+  }
+
+  .detail-running-chip span {
+    @apply h-2 w-2 rounded-full;
+    background: #10b981;
+    animation: pulse 1.2s ease-in-out infinite;
+  }
+
+  .detail-rail-message {
+    @apply rounded-lg px-3 py-2 text-xs;
+    background: var(--surface-subtle);
+    color: var(--text-secondary);
+  }
+
+  .detail-tabs {
+    @apply mb-5 flex gap-1 overflow-x-auto border-b pb-0;
+    border-color: var(--border);
+    background: var(--bg-primary);
+  }
+
+  .detail-tab {
+    @apply relative whitespace-nowrap px-4 py-3 text-sm font-medium transition-colors;
+    color: var(--text-secondary);
+  }
+
+  .detail-tab:hover {
+    color: var(--text-primary);
+  }
+
+  .detail-tab.is-active {
+    color: var(--accent);
+  }
+
+  .detail-tab.is-active::after {
+    @apply absolute bottom-0 left-3 right-3 h-0.5 rounded-full;
+    content: '';
+    background: var(--accent);
+  }
+
+  .detail-action-strip {
+    @apply mb-4 flex flex-wrap items-center gap-2 rounded-lg px-3 py-2 text-xs;
+    background: color-mix(in srgb, #f59e0b 10%, var(--bg-secondary));
+    border: 1px solid color-mix(in srgb, #f59e0b 28%, var(--border));
+  }
+
+  .detail-action-strip span {
+    @apply font-semibold;
+    color: #b45309;
+  }
+
+  .detail-action-strip button {
+    @apply rounded-md border px-2 py-1 font-medium transition-colors;
+    border-color: color-mix(in srgb, #f59e0b 32%, var(--border));
+    background: var(--bg-primary);
+    color: var(--text-primary);
+  }
+
+  .detail-action-strip button:hover {
+    border-color: #f59e0b;
+  }
+
+  .records-workbench {
+    @apply space-y-5;
+  }
+
+  .records-overview {
+    @apply grid gap-x-8 gap-y-2 md:grid-cols-3;
+  }
+
+  .records-overview div {
+    @apply border-b py-3;
+    border-color: color-mix(in srgb, var(--border) 76%, transparent);
+  }
+
+  .records-stat-grid {
+    @apply grid gap-3 sm:grid-cols-2 md:grid-cols-3;
+  }
+
+  .records-overview span,
+  .records-section-head span {
+    @apply block text-xs;
+    color: var(--text-secondary);
+  }
+
+  .records-overview strong {
+    @apply mt-1 block truncate text-base font-semibold;
+  }
+
+  .records-section {
+    @apply border-t pt-5;
+    border-color: color-mix(in srgb, var(--border) 78%, transparent);
+  }
+
+  .records-section-head {
+    @apply mb-3 flex flex-wrap items-center justify-between gap-3;
+  }
+
+  .records-section-head h3 {
+    @apply text-base font-semibold;
+  }
+
+  .records-review-grid {
+    @apply grid gap-5 md:grid-cols-[16rem_minmax(0,1fr)];
+  }
+
+  .records-review-head {
+    @apply md:col-span-2;
+  }
+
+  .records-rating {
+    @apply flex min-h-56 flex-col justify-between rounded-xl p-5;
+    background:
+      linear-gradient(145deg, color-mix(in srgb, var(--accent-soft) 76%, transparent), var(--surface-subtle));
+  }
+
+  .records-rating strong {
+    @apply text-6xl font-semibold leading-none;
+    color: var(--accent);
+  }
+
+  .records-rating span {
+    @apply text-sm;
+    color: var(--text-secondary);
+  }
+
+  .records-review-grid textarea {
+    min-height: 13rem;
+  }
+
+  .record-tag {
+    @apply rounded-full px-2 py-0.5 text-xs font-medium;
+    background: var(--accent-soft);
+    color: var(--accent);
+  }
+
+  .records-manual-row,
+  .route-composer,
+  .resource-composer {
+    @apply grid gap-2;
+  }
+
+  .records-manual-row {
+    grid-template-columns: minmax(0, 1fr) 7rem auto;
+  }
+
+  .route-composer {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+  }
+
+  .resource-composer {
+    grid-template-columns: 7rem minmax(0, 1.2fr) minmax(0, 1fr) auto;
+  }
+
+  .segmented-control {
+    @apply inline-flex rounded-lg border p-0.5;
+    border-color: var(--border);
+    background: var(--surface-subtle);
+  }
+
+  .segmented-control button {
+    @apply rounded-md px-3 py-2 text-sm font-medium transition-colors;
+    color: var(--text-secondary);
+  }
+
+  .segmented-control button.is-active {
+    background: var(--bg-primary);
+    color: var(--accent);
+    box-shadow: var(--shadow-sm);
+  }
+
+  .records-empty {
+    @apply rounded-lg px-4 py-8 text-center text-sm;
+    background: var(--surface-subtle);
+    color: var(--text-secondary);
+  }
+
+  .bangumi-comments-panel {
+    @apply space-y-4;
+  }
+
+  .bangumi-comments-empty {
+    @apply rounded-lg px-4 py-8 text-center text-sm;
+    background: var(--surface-subtle);
+    color: var(--text-secondary);
+  }
+
+  .bangumi-comments-empty a {
+    @apply mt-2 inline-flex font-medium;
+    color: var(--accent);
+  }
+
+  .bangumi-comment-list {
+    @apply space-y-3;
+  }
+
+  .bangumi-comment-item {
+    @apply rounded-lg border p-4;
+    border-color: color-mix(in srgb, var(--border) 78%, transparent);
+    background: var(--bg-primary);
+  }
+
+  .bangumi-comment-meta {
+    @apply mb-2 flex flex-wrap items-center gap-2 text-xs;
+    color: var(--text-secondary);
+  }
+
+  .bangumi-comment-meta a,
+  .bangumi-comment-meta strong {
+    @apply font-semibold;
+    color: var(--text-primary);
+  }
+
+  .bangumi-comment-meta span {
+    @apply rounded-md px-1.5 py-0.5;
+    background: var(--surface-subtle);
+  }
+
+  .bangumi-comment-item p {
+    @apply whitespace-pre-wrap text-sm leading-6;
+    color: var(--text-primary);
+  }
+
+  .session-timeline,
+  .route-board,
+  .resource-list {
+    @apply mt-3 space-y-2;
+  }
+
+  .session-row,
+  .resource-row {
+    @apply grid items-center gap-3 rounded-lg px-3 py-2.5 text-sm;
+    background: var(--bg-secondary);
+    grid-template-columns: auto minmax(0, 1fr) auto auto;
+  }
+
+  .session-dot {
+    @apply h-2.5 w-2.5 rounded-full;
+    background: var(--text-secondary);
+  }
+
+  .session-dot.is-running {
+    background: #10b981;
+  }
+
+  .session-row p,
+  .resource-row p {
+    @apply truncate text-xs;
+    color: var(--text-secondary);
+  }
+
+  .session-duration {
+    @apply text-sm font-semibold tabular-nums;
+    color: var(--accent);
+  }
+
+  .route-card {
+    @apply grid items-center gap-3 rounded-lg border px-3 py-3 text-sm transition-colors;
+    grid-template-columns: 2.75rem minmax(0, 1fr) auto auto auto;
+    border-color: color-mix(in srgb, var(--border) 78%, transparent);
+    background: var(--bg-secondary);
+  }
+
+  .route-date-input {
+    width: 8.5rem;
+    min-height: 1.875rem;
+    padding: 0.25rem 0.5rem;
+    font-size: 0.75rem;
+  }
+
+  .route-card.is-done {
+    border-color: rgba(16,185,129,0.32);
+    background: color-mix(in srgb, rgba(16,185,129,0.12) 55%, var(--bg-secondary));
+  }
+
+  .route-card img,
+  .route-card > span {
+    @apply h-11 w-11 rounded-lg object-cover;
+    background: var(--surface-subtle);
+  }
+
+  .route-card > span {
+    @apply inline-flex items-center justify-center text-sm font-semibold;
+    color: var(--accent);
+  }
+
+  .route-card p {
+    @apply truncate text-xs;
+    color: var(--text-secondary);
+  }
+
+  .resource-row > span {
+    @apply rounded-md px-2 py-1 text-xs font-semibold;
+    background: var(--surface-subtle);
+    color: var(--text-secondary);
+  }
+
+  .detail-layout {
+    @apply mx-auto grid w-full max-w-7xl gap-5 px-5 py-5;
+    grid-template-columns: minmax(220px, 280px) minmax(0, 1fr);
+  }
+
+  .detail-side-panel {
+    @apply sticky top-[76px] flex flex-col gap-4 self-start rounded-2xl border p-4;
+    max-height: calc(100vh - 96px);
+    overflow: auto;
+    border-color: color-mix(in srgb, var(--border) 78%, transparent);
+    background:
+      linear-gradient(180deg, color-mix(in srgb, var(--bg-secondary) 94%, var(--accent)), var(--bg-secondary) 46%),
+      var(--bg-secondary);
+    box-shadow: var(--shadow-sm);
+  }
+
+  .detail-main-panel {
+    @apply min-w-0;
+  }
+
+  .detail-tab-shell {
+    @apply sticky top-[56px] z-10 rounded-xl border backdrop-blur;
+    border-color: color-mix(in srgb, var(--border) 78%, transparent);
+    background: color-mix(in srgb, var(--bg-primary) 94%, transparent);
+  }
+
+  .detail-side-stats {
+    @apply grid grid-cols-2 gap-2;
+  }
+
   .detail-section {
     transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease, background-color 0.2s ease;
   }
@@ -540,6 +883,11 @@ body {
 
   .detail-cover-frame img {
     @apply h-full w-full object-cover;
+  }
+
+  .detail-cover-frame span {
+    @apply flex h-full w-full items-center justify-center text-xs;
+    color: var(--text-secondary);
   }
 
   .status-pill {
@@ -585,7 +933,7 @@ body {
   }
 
   .star-button {
-    @apply inline-flex h-9 w-9 items-center justify-center rounded-lg text-xl transition-all duration-150;
+    @apply inline-flex h-7 w-7 items-center justify-center rounded-md text-base transition-all duration-150;
     color: var(--border);
   }
 
@@ -822,7 +1170,7 @@ body {
   }
 
   .browse-shell {
-    @apply flex-1 flex flex-col min-h-0;
+    @apply relative flex-1 flex flex-col min-h-0;
     background:
       linear-gradient(180deg, color-mix(in srgb, var(--surface-subtle) 78%, transparent), transparent 22rem),
       var(--bg-primary);
@@ -993,48 +1341,9 @@ body {
     animation: browse-loading-bar 1.2s ease-in-out infinite;
   }
 
-  /* Detail overlay */
-  .browse-detail-overlay {
-    @apply fixed inset-0 z-50 overflow-y-auto px-3 py-4;
-    background: color-mix(in srgb, var(--bg-primary) 94%, black);
-    -webkit-backdrop-filter: blur(4px);
-    backdrop-filter: blur(4px);
-  }
-
-  .browse-detail-card {
-    @apply mx-auto max-w-3xl overflow-hidden rounded-2xl border;
-    border-color: var(--border);
-    background: var(--bg-primary);
-    box-shadow: 0 8px 40px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.08);
-  }
-
-  .browse-detail-card-rich {
-    @apply max-w-5xl;
-  }
-
-  .browse-detail-header {
-    @apply sticky top-0 z-10 border-b border-[var(--border)];
-    background-color: color-mix(in srgb, var(--bg-secondary) 95%, transparent);
-    -webkit-backdrop-filter: blur(12px);
-    backdrop-filter: blur(12px);
-  }
-
-  .browse-detail-hero {
-    @apply grid gap-5 sm:grid-cols-[8rem_minmax(0,1fr)];
-  }
-
-  .browse-detail-cover-empty {
-    @apply flex aspect-[3/4] w-32 shrink-0 items-center justify-center rounded-xl text-sm;
-    color: var(--text-secondary);
-    background: var(--surface-subtle);
-  }
-
+  /* Browse detail pages */
   .browse-detail-loading {
-    @apply fixed inset-0 z-50 bg-black/20 flex items-center justify-center;
-  }
-
-  .browse-detail-body {
-    @apply space-y-5 px-5 py-5 md:px-6 md:py-6;
+    @apply fixed left-52 right-0 inset-y-0 z-50 bg-black/20 flex items-center justify-center;
   }
 
   .bangumi-library-panel {
@@ -1064,18 +1373,12 @@ body {
   }
 
   .bangumi-hero-panel {
-    @apply grid gap-5 rounded-2xl border p-5 md:grid-cols-[10rem_minmax(0,1fr)];
+    @apply grid gap-5 rounded-lg border p-4 md:grid-cols-[10rem_minmax(0,1fr)] md:p-5;
     border-color: color-mix(in srgb, var(--border) 78%, transparent);
     background:
       linear-gradient(135deg, color-mix(in srgb, var(--bg-secondary) 92%, var(--accent)), var(--bg-secondary) 62%),
       var(--bg-secondary);
     box-shadow: var(--shadow-md);
-  }
-
-  .bangumi-hero-panel.is-library {
-    background:
-      linear-gradient(135deg, color-mix(in srgb, var(--bg-primary) 78%, var(--accent)), var(--bg-primary) 62%),
-      var(--bg-primary);
   }
 
   .bangumi-cover-frame {
@@ -1163,6 +1466,22 @@ body {
     box-shadow: 0 2px 6px var(--accent-soft);
   }
 
+  .quick-complete-date {
+    width: 9rem;
+    min-height: 2rem;
+    border-radius: 0.375rem;
+    border: 1px solid var(--border);
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    padding: 0.25rem 0.5rem;
+    font-size: 0.75rem;
+  }
+
+  .quick-complete-date:focus {
+    border-color: var(--accent);
+    outline: none;
+  }
+
   .bangumi-action-row {
     @apply flex flex-wrap items-center gap-2;
   }
@@ -1174,7 +1493,7 @@ body {
   }
 
   .bangumi-section {
-    @apply rounded-xl border p-5;
+    @apply rounded-lg border p-4 md:p-5;
     border-color: color-mix(in srgb, var(--border) 82%, transparent);
     background: var(--bg-secondary);
   }
@@ -1198,27 +1517,76 @@ body {
   }
 
   .bangumi-collection-strip {
-    @apply grid gap-2 sm:grid-cols-5;
+    @apply flex flex-wrap items-center gap-1.5;
   }
 
-  .bangumi-collection-strip div {
-    @apply rounded-xl border px-4 py-3 transition-all duration-200;
+  .bangumi-collection-strip .collection-chip {
+    @apply inline-flex items-center gap-1 rounded-lg border px-2.5 py-1 text-xs transition-colors;
     border-color: var(--border);
     background: var(--bg-primary);
   }
 
-  .bangumi-collection-strip div:hover {
-    border-color: color-mix(in srgb, var(--accent) 28%, var(--border));
-    transform: translateY(-1px);
+  .bangumi-collection-strip .collection-chip.is-collect {
+    border-color: color-mix(in srgb, var(--accent) 40%, transparent);
+    background: color-mix(in srgb, var(--accent) 8%, var(--bg-primary));
   }
 
-  .bangumi-collection-strip span {
-    @apply block text-[11px] font-medium;
+  .bangumi-collection-strip .collection-chip span {
     color: var(--text-secondary);
+  }
+
+  .bangumi-collection-strip .collection-chip.is-collect span {
+    color: var(--accent);
+  }
+
+  .bangumi-collection-strip .collection-chip strong {
+    @apply font-semibold;
   }
 
   .bangumi-collection-strip strong {
     @apply mt-0.5 block text-sm font-semibold tabular-nums;
+  }
+
+  .rating-distribution {
+    @apply mt-3;
+  }
+
+  .rating-distribution-head {
+    @apply flex items-center justify-between mb-2;
+  }
+
+  .rating-distribution-head span:first-child {
+    @apply text-xs font-semibold text-[var(--text-primary)];
+  }
+
+  .rating-distribution-head span:last-child {
+    @apply text-[11px] text-[var(--text-secondary)];
+  }
+
+  .rating-distribution-bars {
+    @apply flex flex-col gap-0.5;
+  }
+
+  .rating-bar-row {
+    @apply flex items-center gap-2;
+  }
+
+  .rating-bar-label {
+    @apply w-5 text-right text-xs tabular-nums text-[var(--text-secondary)] shrink-0;
+  }
+
+  .rating-bar-track {
+    @apply flex-1 h-3 rounded-full overflow-hidden;
+    background: color-mix(in srgb, var(--bg-primary) 72%, var(--bg-secondary));
+  }
+
+  .rating-bar-fill {
+    @apply h-full rounded-full transition-all duration-300;
+    background: color-mix(in srgb, var(--accent) 62%, #f59e0b);
+  }
+
+  .rating-bar-count {
+    @apply w-8 text-xs tabular-nums text-[var(--text-secondary)] shrink-0;
   }
 
   .bangumi-two-column {
@@ -1302,11 +1670,11 @@ body {
   }
 
   .bangumi-relation-grid {
-    @apply grid gap-2.5 md:grid-cols-2;
+    @apply grid gap-2.5 md:grid-cols-2 xl:grid-cols-3;
   }
 
   .bangumi-relation-card {
-    @apply grid grid-cols-[2.75rem_minmax(0,1fr)_auto] items-center gap-3 rounded-xl border p-3 text-left transition-all duration-200;
+    @apply grid grid-cols-[4.5rem_minmax(0,1fr)] items-center gap-3 rounded-lg border p-2.5 text-left transition-all duration-200;
     border-color: color-mix(in srgb, var(--border) 76%, transparent);
     background: var(--bg-primary);
     color: var(--text-primary);
@@ -1323,7 +1691,7 @@ body {
   }
 
   a.bangumi-relation-card {
-    @apply grid-cols-[2.75rem_minmax(0,1fr)];
+    @apply grid-cols-[4.5rem_minmax(0,1fr)];
   }
 
   .bangumi-relation-card:hover {
@@ -1332,12 +1700,15 @@ body {
 
   .bangumi-relation-card img,
   .bangumi-relation-empty {
-    @apply h-14 w-10 rounded object-cover;
+    @apply h-24 w-16 rounded-md object-cover;
     background: var(--surface-subtle);
   }
 
   .bangumi-relation-empty {
-    @apply flex items-center justify-center text-[10px];
+    @apply flex items-center justify-center border text-[10px] font-medium;
+    border-color: color-mix(in srgb, var(--border) 70%, transparent);
+    background:
+      linear-gradient(135deg, color-mix(in srgb, var(--surface-subtle) 86%, var(--accent)), var(--surface-subtle));
     color: var(--text-secondary);
   }
 
@@ -1347,11 +1718,11 @@ body {
   }
 
   .bangumi-relation-card strong {
-    @apply text-sm font-medium;
+    @apply line-clamp-2 text-sm font-medium leading-snug;
   }
 
   .bangumi-relation-card span {
-    @apply text-xs;
+    @apply mt-1 text-xs;
     color: var(--text-secondary);
   }
 
@@ -1381,32 +1752,20 @@ body {
     color: var(--text-secondary);
   }
 
-  .bangumi-entity-overlay {
-    @apply fixed inset-0 z-[70] overflow-y-auto px-3 py-4;
-    background: color-mix(in srgb, var(--bg-primary) 90%, black);
+  .bangumi-entity-page {
+    @apply flex-1 overflow-y-auto;
+    background:
+      linear-gradient(180deg, color-mix(in srgb, var(--surface-subtle) 70%, transparent), transparent 20rem),
+      var(--bg-primary);
   }
 
   .bangumi-entity-panel {
-    @apply mx-auto max-w-4xl overflow-hidden rounded-2xl border;
-    border-color: var(--border);
-    background: var(--bg-primary);
-    box-shadow: var(--shadow-md);
-  }
-
-  .bangumi-entity-header {
-    @apply sticky top-0 z-10 flex items-center gap-3 border-b px-5 py-3;
-    border-color: var(--border);
-    background-color: color-mix(in srgb, var(--bg-secondary) 95%, transparent);
-    -webkit-backdrop-filter: blur(8px);
-    backdrop-filter: blur(8px);
-  }
-
-  .bangumi-entity-header h2 {
-    @apply min-w-0 flex-1 truncate text-sm font-semibold;
+    @apply min-h-full overflow-visible border-0;
+    background: transparent;
   }
 
   .bangumi-entity-body {
-    @apply space-y-5 px-5 py-5 md:px-6 md:py-6;
+    @apply mx-auto max-w-[1360px] space-y-4 px-4 py-4 md:px-6 md:py-5;
   }
 
   .bangumi-entity-loading,
@@ -1420,7 +1779,7 @@ body {
   }
 
   .bangumi-entity-hero {
-    @apply grid gap-5 rounded-2xl border p-5 md:grid-cols-[10rem_minmax(0,1fr)];
+    @apply grid gap-5 rounded-lg border p-4 md:grid-cols-[10rem_minmax(0,1fr)] md:p-5;
     border-color: color-mix(in srgb, var(--border) 78%, transparent);
     background:
       linear-gradient(135deg, color-mix(in srgb, var(--bg-secondary) 92%, var(--accent)), var(--bg-secondary) 62%),
@@ -1429,7 +1788,7 @@ body {
   }
 
   .bangumi-entity-image {
-    @apply mx-auto flex h-48 w-36 overflow-hidden rounded-xl border md:mx-0;
+    @apply mx-auto flex h-48 w-36 overflow-hidden rounded-lg border md:mx-0;
     border-color: color-mix(in srgb, var(--border) 60%, transparent);
     background: var(--surface-subtle);
     box-shadow: 0 4px 20px rgba(0,0,0,0.10), 0 1px 3px rgba(0,0,0,0.06);
@@ -1498,6 +1857,40 @@ body {
   }
 
   @media (max-width: 640px) {
+    .detail-tabs {
+      @apply top-0;
+    }
+
+    .records-overview {
+      @apply grid-cols-2;
+    }
+
+    .records-review-grid {
+      @apply grid-cols-1;
+    }
+
+    .records-review-head {
+      @apply col-span-1;
+    }
+
+    .records-manual-row,
+    .route-composer,
+    .resource-composer,
+    .session-row,
+    .resource-row,
+    .route-card {
+      @apply grid-cols-1;
+    }
+
+    .session-dot {
+      @apply hidden;
+    }
+
+    .route-card img,
+    .route-card > span {
+      @apply h-12 w-12;
+    }
+
     .browse-filter {
       @apply px-3;
     }
@@ -1513,14 +1906,6 @@ body {
     .browse-grid {
       @apply gap-2 px-3;
       grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-    }
-
-    .browse-detail-header {
-      @apply px-4;
-    }
-
-    .browse-detail-body {
-      @apply px-3;
     }
 
     .bangumi-hero-panel {

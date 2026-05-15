@@ -2,10 +2,20 @@
 import { searchBangumiSubjectsWithTotal } from '../services/bangumiMeta'
 import { fetchBangumiSnapshot } from '../services/bangumiLibrary'
 import { useGameStore } from '../store/gameStore'
-import { BrowseDetailPanel } from './BrowseDetailPanel'
+import { BangumiEntityDetailPanel, type BangumiEntityTarget } from './BangumiEntityDetailPanel'
+import { GameDetailPage } from './GameDetailPage'
 import { BrowseFilterBar } from './BrowseFilterBar'
 import { BrowseGameCard } from './BrowseGameCard'
-import type { BangumiSnapshot, BangumiSubject, BrowseCategory, BrowseFilterState } from '../types'
+import {
+  browseBack,
+  browseClose,
+  browseOpenEntity,
+  browseOpenSubject,
+  getActiveBrowseRoute,
+  type BrowseRoute,
+} from './browseNavigation'
+import { usePageHeaderOverride } from './PageHeaderContext'
+import type { BangumiSubject, BrowseCategory, BrowseFilterState } from '../types'
 
 const PAGE_SIZE = 42
 
@@ -35,9 +45,10 @@ export function BrowseView() {
   const [loadingMore, setLoadingMore] = useState(false)
   const [error, setError] = useState('')
   const [lastUpdatedAt, setLastUpdatedAt] = useState<number | null>(null)
-  const [selectedSnapshot, setSelectedSnapshot] = useState<BangumiSnapshot | null>(null)
+  const [routeStack, setRouteStack] = useState<BrowseRoute[]>([])
   const [detailLoading, setDetailLoading] = useState(false)
 
+  const activeRoute = getActiveBrowseRoute(routeStack)
   const libraryIds = useMemo(() => new Set(games.map(game => game.id)), [games])
 
   const hasMorePages = total > 0
@@ -128,25 +139,25 @@ export function BrowseView() {
 
   const handleFiltersChange = (nextFilters: BrowseFilterState) => {
     setFilters(nextFilters)
-    setSelectedSnapshot(null)
+    setRouteStack(browseClose)
     runSearch(nextFilters, 0)
     scrollToTop()
   }
 
   const handleKeywordChange = (nextFilters: BrowseFilterState) => {
     setFilters(nextFilters)
-    setSelectedSnapshot(null)
+    setRouteStack(browseClose)
   }
 
   const handleCategoryChange = (nextFilters: BrowseFilterState) => {
     setFilters(nextFilters)
-    setSelectedSnapshot(null)
+    setRouteStack(browseClose)
     runSearch(nextFilters, 0)
     scrollToTop()
   }
 
   const handleSearch = () => {
-    setSelectedSnapshot(null)
+    setRouteStack(browseClose)
     runSearch(filters, 0)
     scrollToTop()
   }
@@ -154,21 +165,21 @@ export function BrowseView() {
   const handleReset = () => {
     const nextFilters = createDefaultBrowseFilters()
     setFilters(nextFilters)
-    setSelectedSnapshot(null)
+    setRouteStack(browseClose)
     runSearch(nextFilters, 0)
     scrollToTop()
   }
 
   const handlePrevPage = () => {
     const nextOffset = Math.max(0, offset - PAGE_SIZE)
-    setSelectedSnapshot(null)
+    setRouteStack(browseClose)
     runSearch(filters, nextOffset)
     scrollToTop()
   }
 
   const handleNextPage = () => {
     const nextOffset = offset + results.length
-    setSelectedSnapshot(null)
+    setRouteStack(browseClose)
     runSearch(filters, nextOffset)
     scrollToTop()
   }
@@ -177,13 +188,12 @@ export function BrowseView() {
     const requestId = detailSeq.current + 1
     detailSeq.current = requestId
     setDetailLoading(true)
-    setSelectedSnapshot(null)
     setError('')
 
     try {
       const snapshot = await fetchBangumiSnapshot(subjectId)
       if (requestId !== detailSeq.current) return
-      setSelectedSnapshot(snapshot)
+      setRouteStack(browseOpenSubject([], snapshot))
     } catch (detailError) {
       if (requestId !== detailSeq.current) return
       console.error(detailError)
@@ -195,6 +205,46 @@ export function BrowseView() {
     }
   }
 
+  const handleOpenRelatedSubject = async (subjectId: number) => {
+    const requestId = detailSeq.current + 1
+    detailSeq.current = requestId
+    setDetailLoading(true)
+    setError('')
+
+    try {
+      const snapshot = await fetchBangumiSnapshot(subjectId)
+      if (requestId !== detailSeq.current) return
+      setRouteStack(prev => browseOpenSubject(prev, snapshot))
+    } catch (detailError) {
+      if (requestId !== detailSeq.current) return
+      console.error(detailError)
+      setError('加载详情失败，请稍后重试')
+    } finally {
+      if (requestId === detailSeq.current) {
+        setDetailLoading(false)
+      }
+    }
+  }
+
+  const handleOpenEntity = (target: BangumiEntityTarget) => {
+    setRouteStack(prev => browseOpenEntity(prev, target))
+  }
+
+  const handleBack = () => {
+    setRouteStack(browseBack)
+  }
+
+  // Register header override for drilldown routes
+  const pageHeaderState = useMemo((): Parameters<typeof usePageHeaderOverride>[0] => {
+    if (!activeRoute) return null
+    if (activeRoute.kind === 'subject') {
+      const title = activeRoute.snapshot.meta?.title_cn || activeRoute.snapshot.meta?.title || '游戏详情'
+      return { title, onBack: handleBack }
+    }
+    return { title: activeRoute.target.title, onBack: handleBack }
+  }, [activeRoute, handleBack])
+  usePageHeaderOverride(pageHeaderState, [pageHeaderState])
+
   const pageNum = offset > 0 ? Math.floor(offset / PAGE_SIZE) + 1 : 1
   const totalPages = total > 0 ? Math.ceil(total / PAGE_SIZE) : (results.length >= PAGE_SIZE ? pageNum + 1 : pageNum)
   const hasNextPage = total > 0 ? offset + results.length < total : results.length >= PAGE_SIZE
@@ -204,129 +254,141 @@ export function BrowseView() {
 
   return (
     <div className="browse-shell">
-      <BrowseFilterBar
-        filters={filters}
-        onFiltersChange={handleFiltersChange}
-        onKeywordChange={handleKeywordChange}
-        onCategoryChange={handleCategoryChange}
-        onSearch={handleSearch}
-        onReset={handleReset}
-      />
+      {activeRoute === null ? (
+        <>
+          <BrowseFilterBar
+            filters={filters}
+            onFiltersChange={handleFiltersChange}
+            onKeywordChange={handleKeywordChange}
+            onCategoryChange={handleCategoryChange}
+            onSearch={handleSearch}
+            onReset={handleReset}
+          />
 
-      <div className="browse-summary">
-        <div className="min-w-0">
-          <h1>发现 Bangumi 游戏</h1>
-          <p>
-            {total > 0 ? `显示 ${showingFrom}-${showingTo} / ${total} 个结果` : `${results.length} 个结果`}
-            {lastUpdatedAt ? ` · ${new Date(lastUpdatedAt).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })} 更新` : ''}
-          </p>
-        </div>
-        {error && results.length > 0 && (
-          <button type="button" onClick={handleSearch} className="browse-inline-error">
-            {error}，点击重试
-          </button>
-        )}
-      </div>
-
-      <div className="browse-content" ref={scrollRef}>
-        {loading && results.length === 0 && (
-          <div className="browse-grid">
-            {Array.from({ length: 12 }).map((_, index) => (
-              <div key={index} className="browse-skeleton rounded-lg overflow-hidden bg-[var(--bg-secondary)] border border-[var(--border)]" style={{ animationDelay: `${index * 60}ms` }}>
-                <div className="aspect-[3/4] bg-[var(--surface-subtle)] animate-pulse" />
-                <div className="p-2 space-y-2">
-                  <div className="h-3 bg-[var(--surface-subtle)] animate-pulse rounded" />
-                  <div className="h-3 w-2/3 bg-[var(--surface-subtle)] animate-pulse rounded" />
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {!loading && error && results.length === 0 && (
-          <div className="py-20 text-center">
-            <p className="text-sm text-red-500">{error}</p>
-            <button type="button" onClick={handleSearch} className="btn btn-secondary btn-sm mt-3">
-              重试
-            </button>
-          </div>
-        )}
-
-        {!loading && !error && results.length === 0 && (
-          <div className="py-20 text-center text-sm text-[var(--text-secondary)]">
-            没有找到符合条件的游戏，试试调整关键词或筛选条件。
-          </div>
-        )}
-
-        {results.length > 0 && (
-          <>
-            {loading && (
-              <div className="browse-loading-bar">
-                <div className="browse-loading-bar-inner" />
-              </div>
-            )}
-            <div className="browse-grid">
-              {results.map((subject, index) => (
-                <div key={`${subject.id}-${index}`} className="browse-card-enter" style={{ animationDelay: `${Math.min(index % PAGE_SIZE, 20) * 30}ms` }}>
-                  <BrowseGameCard
-                    subject={subject}
-                    isInLibrary={libraryIds.has(String(subject.id))}
-                    onViewDetail={handleViewDetail}
-                  />
-                </div>
-              ))}
+          <div className="browse-summary">
+            <div className="min-w-0">
+              <h1>发现 Bangumi 游戏</h1>
+              <p>
+                {total > 0 ? `显示 ${showingFrom}-${showingTo} / ${total} 个结果` : `${results.length} 个结果`}
+                {lastUpdatedAt ? ` · ${new Date(lastUpdatedAt).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })} 更新` : ''}
+              </p>
             </div>
-
-            {/* Sentinel for infinite scroll */}
-            <div ref={sentinelRef} className="h-px" />
-
-            {/* Loading-more indicator */}
-            {loadingMore && (
-              <div className="flex justify-center py-4">
-                <div className="w-5 h-5 border-2 border-[var(--accent)] border-t-transparent rounded-full animate-spin" />
-              </div>
+            {error && results.length > 0 && (
+              <button type="button" onClick={handleSearch} className="browse-inline-error">
+                {error}，点击重试
+              </button>
             )}
-
-            {/* End-of-results marker */}
-            {!hasMorePages && results.length > PAGE_SIZE && (
-              <div className="py-4 text-center text-xs text-[var(--text-secondary)]">
-                已加载全部结果
-              </div>
-            )}
-          </>
-        )}
-      </div>
-
-      {results.length > 0 && (
-        <div className="browse-pagination">
-          <button type="button" onClick={handlePrevPage} disabled={!hasPrevPage || loading} className="btn btn-secondary btn-sm">
-            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-            </svg>
-            <span className="ml-0.5">上一页</span>
-          </button>
-
-          <div className="flex items-center gap-2 text-sm">
-            <span className="text-[var(--text-primary)] font-medium tabular-nums">{pageNum}</span>
-            <span className="text-[var(--text-secondary)]">/</span>
-            <span className="text-[var(--text-secondary)] tabular-nums">{totalPages}</span>
-            {total > 0 && <span className="text-xs text-[var(--text-secondary)] ml-1">({total} 个结果)</span>}
           </div>
 
-          <button type="button" onClick={handleNextPage} disabled={!hasNextPage || loading} className="btn btn-secondary btn-sm">
-            <span className="mr-0.5">下一页</span>
-            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-            </svg>
-          </button>
-        </div>
-      )}
+          <div className="browse-content" ref={scrollRef}>
+            {loading && results.length === 0 && (
+              <div className="browse-grid">
+                {Array.from({ length: 12 }).map((_, index) => (
+                  <div key={index} className="browse-skeleton rounded-lg overflow-hidden bg-[var(--bg-secondary)] border border-[var(--border)]" style={{ animationDelay: `${index * 60}ms` }}>
+                    <div className="aspect-[3/4] bg-[var(--surface-subtle)] animate-pulse" />
+                    <div className="p-2 space-y-2">
+                      <div className="h-3 bg-[var(--surface-subtle)] animate-pulse rounded" />
+                      <div className="h-3 w-2/3 bg-[var(--surface-subtle)] animate-pulse rounded" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
 
-      {selectedSnapshot?.meta && (
-        <BrowseDetailPanel
-          snapshot={selectedSnapshot}
-          isInLibrary={libraryIds.has(String(selectedSnapshot.meta.subject_id))}
-          onClose={() => setSelectedSnapshot(null)}
+            {!loading && error && results.length === 0 && (
+              <div className="py-20 text-center">
+                <p className="text-sm text-red-500">{error}</p>
+                <button type="button" onClick={handleSearch} className="btn btn-secondary btn-sm mt-3">
+                  重试
+                </button>
+              </div>
+            )}
+
+            {!loading && !error && results.length === 0 && (
+              <div className="py-20 text-center text-sm text-[var(--text-secondary)]">
+                没有找到符合条件的游戏，试试调整关键词或筛选条件。
+              </div>
+            )}
+
+            {results.length > 0 && (
+              <>
+                {loading && (
+                  <div className="browse-loading-bar">
+                    <div className="browse-loading-bar-inner" />
+                  </div>
+                )}
+                <div className="browse-grid">
+                  {results.map((subject, index) => (
+                    <div key={`${subject.id}-${index}`} className="browse-card-enter" style={{ animationDelay: `${Math.min(index % PAGE_SIZE, 20) * 30}ms` }}>
+                      <BrowseGameCard
+                        subject={subject}
+                        isInLibrary={libraryIds.has(String(subject.id))}
+                        onViewDetail={handleViewDetail}
+                      />
+                    </div>
+                  ))}
+                </div>
+
+                {/* Sentinel for infinite scroll */}
+                <div ref={sentinelRef} className="h-px" />
+
+                {/* Loading-more indicator */}
+                {loadingMore && (
+                  <div className="flex justify-center py-4">
+                    <div className="w-5 h-5 border-2 border-[var(--accent)] border-t-transparent rounded-full animate-spin" />
+                  </div>
+                )}
+
+                {/* End-of-results marker */}
+                {!hasMorePages && results.length > PAGE_SIZE && (
+                  <div className="py-4 text-center text-xs text-[var(--text-secondary)]">
+                    已加载全部结果
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+
+          {results.length > 0 && (
+            <div className="browse-pagination">
+              <button type="button" onClick={handlePrevPage} disabled={!hasPrevPage || loading} className="btn btn-secondary btn-sm">
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                </svg>
+                <span className="ml-0.5">上一页</span>
+              </button>
+
+              <div className="flex items-center gap-2 text-sm">
+                <span className="text-[var(--text-primary)] font-medium tabular-nums">{pageNum}</span>
+                <span className="text-[var(--text-secondary)]">/</span>
+                <span className="text-[var(--text-secondary)] tabular-nums">{totalPages}</span>
+                {total > 0 && <span className="text-xs text-[var(--text-secondary)] ml-1">({total} 个结果)</span>}
+              </div>
+
+              <button type="button" onClick={handleNextPage} disabled={!hasNextPage || loading} className="btn btn-secondary btn-sm">
+                <span className="mr-0.5">下一页</span>
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </button>
+            </div>
+          )}
+        </>
+      ) : activeRoute.kind === 'subject' ? (
+        <GameDetailPage
+          game={activeRoute.snapshot.meta ? games.find(g => g.id === String(activeRoute.snapshot.meta?.subject_id)) || null : null}
+          snapshot={activeRoute.snapshot}
+          onBack={handleBack}
+          onOpenSubject={handleOpenRelatedSubject}
+          onOpenEntity={handleOpenEntity}
+        />
+      ) : (
+        <BangumiEntityDetailPanel
+          target={activeRoute.target}
+          onBack={handleBack}
+          onOpenSubject={handleOpenRelatedSubject}
+          onOpenPerson={(id, title) => handleOpenEntity({ kind: 'person', id, title })}
+          onOpenCharacter={(id, title) => handleOpenEntity({ kind: 'character', id, title })}
         />
       )}
 

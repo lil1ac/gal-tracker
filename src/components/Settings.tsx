@@ -6,11 +6,7 @@ import { useGameStore } from '../store/gameStore'
 import { getMyBangumiUser, getUserGameCollections } from '../services/bangumiMeta'
 import { collectionToGame, getCollectionSubjectId, mergeCollectionIntoGame } from '../services/bangumiSync'
 
-interface SettingsProps {
-  onClose: () => void
-}
-
-export function Settings({ onClose }: SettingsProps) {
+export function Settings() {
   const { theme, setTheme, accentId, setAccentId } = useTheme()
   const { load, games, addGame, updateGame } = useGameStore()
   const [apiKey, setApiKeyState] = useState('')
@@ -125,21 +121,8 @@ export function Settings({ onClose }: SettingsProps) {
   }
 
   return (
-    <div className="flex-1 flex flex-col bg-[var(--bg-primary)]">
-      <div className="h-14 px-5 flex items-center border-b border-[var(--border)] bg-[var(--bg-secondary)] shrink-0">
-        <button
-          onClick={onClose}
-          className="flex items-center gap-2 text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
-        >
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-          </svg>
-          返回
-        </button>
-        <h1 className="ml-4 font-semibold">设置</h1>
-      </div>
-
-      <div className="flex-1 overflow-y-auto p-8 max-w-2xl">
+    <div className="flex-1 overflow-y-auto bg-[var(--bg-primary)]">
+      <div className="p-8 max-w-2xl mx-auto">
         {message && (
           <div className="mb-6 rounded-md border border-[var(--border)] bg-[var(--surface-subtle)] px-4 py-3 text-sm text-[var(--text-primary)]">
             {message}

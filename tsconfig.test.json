@@ -10,6 +10,6 @@
     "allowImportingTsExtensions": false,
     "isolatedModules": false
   },
-  "include": ["src/**/*.test.ts", "src/services/libraryStats.ts", "src/services/launchService.ts", "src/services/dashboardStats.ts", "src/services/memoryStats.ts", "src/services/bangumiMeta.ts", "src/services/bangumiGame.ts", "src/services/bangumiSync.ts", "src/types/**/*.ts"],
+  "include": ["src/**/*.test.ts", "src/components/browseNavigation.ts", "src/components/gameDetailTabs.ts", "src/components/gameRoutes.ts", "src/services/libraryStats.ts", "src/services/launchService.ts", "src/services/dashboardStats.ts", "src/services/memoryStats.ts", "src/services/bangumiMeta.ts", "src/services/bangumiGame.ts", "src/services/bangumiSync.ts", "src/services/bangumiComments.ts", "src/types/**/*.ts"],
   "exclude": []
 }

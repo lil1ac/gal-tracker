@@ -35,6 +35,10 @@ export function setBangumiAccessToken(token: string) {
   accessToken = token.trim()
 }
 
+export function getBangumiAccessToken(): string {
+  return accessToken
+}
+
 function getHeaders(options: RequestOptions = {}): HeadersInit {
   const token = options.token ?? accessToken
   const headers: HeadersInit = {

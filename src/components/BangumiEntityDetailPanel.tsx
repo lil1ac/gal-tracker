@@ -10,7 +10,7 @@ interface BangumiEntityTarget {
 
 interface BangumiEntityDetailPanelProps {
   target: BangumiEntityTarget
-  onClose: () => void
+  onBack: () => void
   onOpenSubject?: (subjectId: number) => void
   onOpenPerson?: (personId: number, title: string) => void
   onOpenCharacter?: (characterId: number, title: string) => void
@@ -22,7 +22,7 @@ function subjectTitle(subject: BangumiEntitySubject) {
 
 export function BangumiEntityDetailPanel({
   target,
-  onClose,
+  onBack,
   onOpenSubject,
   onOpenPerson,
   onOpenCharacter,
@@ -57,23 +57,11 @@ export function BangumiEntityDetailPanel({
   }, [target.kind, target.id])
 
   const detail = data?.detail
-  const title = detail?.name || target.title
   const subjects = useMemo(() => data?.subjects.slice(0, 12) || [], [data])
 
   return (
-    <div className="bangumi-entity-overlay" onClick={onClose}>
-      <div className="bangumi-entity-panel" onClick={event => event.stopPropagation()}>
-        <div className="bangumi-entity-header">
-          <button type="button" onClick={onClose} className="btn btn-secondary btn-sm">
-            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-            </svg>
-            返回
-          </button>
-          <h2>{title}</h2>
-          {detail && <a href={detail.url} target="_blank" rel="noopener noreferrer" className="btn btn-secondary btn-sm">Bangumi</a>}
-        </div>
-
+    <div className="bangumi-entity-page">
+      <div className="bangumi-entity-panel">
         {loading && (
           <div className="bangumi-entity-loading">
             <span className="h-5 w-5 rounded-full border-2 border-[var(--accent)] border-t-transparent animate-spin" />
@@ -84,7 +72,7 @@ export function BangumiEntityDetailPanel({
         {error && !loading && (
           <div className="bangumi-entity-error">
             <p>{error}</p>
-            <button type="button" onClick={onClose} className="btn btn-secondary btn-sm">关闭</button>
+            <button type="button" onClick={onBack} className="btn btn-secondary btn-sm">返回</button>
           </div>
         )}
 
@@ -92,12 +80,13 @@ export function BangumiEntityDetailPanel({
           <div className="bangumi-entity-body">
             <section className="bangumi-entity-hero">
               <div className="bangumi-entity-image">
-                {detail.image ? <img src={detail.image} alt={detail.name} /> : <span>{detail.name.slice(0, 1)}</span>}
+                {detail.image ? <img src={detail.image} alt={detail.name} loading="lazy" /> : <span>{detail.name.slice(0, 1)}</span>}
               </div>
               <div className="bangumi-entity-main">
                 <div>
                   <h1>{detail.name}</h1>
                   <p>{data.kind === 'character' ? '角色' : '制作人员'}</p>
+                  <a href={detail.url} target="_blank" rel="noopener noreferrer" className="mt-1 btn btn-secondary btn-sm inline-flex">Bangumi</a>
                 </div>
                 <div className="bangumi-fact-row">
                   <span>收藏 {detail.collects.toLocaleString()}</span>
@@ -140,7 +129,7 @@ export function BangumiEntityDetailPanel({
                       onClick={() => onOpenSubject?.(subject.id)}
                       className="bangumi-relation-card"
                     >
-                      {subject.cover_url ? <img src={subject.cover_url} alt="" /> : <div className="bangumi-relation-empty">无封面</div>}
+                      {subject.cover_url ? <img src={subject.cover_url} alt="" loading="lazy" /> : <div className="bangumi-relation-empty">无封面</div>}
                       <div className="min-w-0">
                         <strong>{subjectTitle(subject)}</strong>
                         <span>{subject.relation || '关联游戏'}{subject.score ? ` · ${subject.score.toFixed(1)}` : ''}</span>
@@ -161,9 +150,9 @@ export function BangumiEntityDetailPanel({
                   <p className="bangumi-empty">暂无关联人物</p>
                 ) : (
                   <div className="bangumi-staff-list">
-                    {data.persons.slice(0, 12).map(person => (
+                    {data.persons.slice(0, 12).map((person, index) => (
                       <button
-                        key={`${person.id}-${person.relation}`}
+                        key={`${person.id}-${person.relation}-${index}`}
                         type="button"
                         onClick={() => onOpenPerson?.(person.id, person.name)}
                         className="bangumi-staff-row is-clickable"
@@ -187,14 +176,14 @@ export function BangumiEntityDetailPanel({
                   <p className="bangumi-empty">暂无关联角色</p>
                 ) : (
                   <div className="bangumi-character-grid">
-                    {data.characters.slice(0, 12).map(character => (
+                    {data.characters.slice(0, 12).map((character, index) => (
                       <button
-                        key={character.id}
+                        key={`${character.id}-${index}`}
                         type="button"
                         onClick={() => onOpenCharacter?.(character.id, character.name)}
                         className="bangumi-character-card is-clickable"
                       >
-                        {character.image ? <img src={character.image} alt="" /> : <div className="bangumi-avatar-empty">{character.name.slice(0, 1)}</div>}
+                        {character.image ? <img src={character.image} alt="" loading="lazy" /> : <div className="bangumi-avatar-empty">{character.name.slice(0, 1)}</div>}
                         <div className="min-w-0">
                           <strong>{character.name}</strong>
                           <span>{character.relation || '角色'}</span>

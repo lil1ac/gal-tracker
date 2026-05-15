@@ -84,17 +84,41 @@ export function mapBangumiPersonDetail(raw: any): BangumiPersonDetail {
 export function mapBangumiEntitySubject(raw: any): BangumiEntitySubject {
   const subject = raw.subject || raw
   const rating = subject.rating || raw.rating || {}
+  const images = subject.images || raw.images
   return {
     id: Number(subject.id),
     name: subject.name || '',
     name_cn: subject.name_cn || null,
     relation: raw.staff || raw.relation || raw.type || '',
     type: Number(subject.type || 0),
-    cover_url: pickBangumiImage(subject.images),
+    cover_url: pickBangumiImage(images),
     score: typeof rating.score === 'number' ? rating.score : null,
     rank: typeof subject.rank === 'number' ? subject.rank : (typeof rating.rank === 'number' ? rating.rank : null),
     air_date: subject.date || subject.air_date || null,
   }
+}
+
+export function mergeBangumiEntitySubjectCover(subject: BangumiEntitySubject, rawDetail: any): BangumiEntitySubject {
+  if (subject.cover_url) return subject
+  const cover = pickBangumiImage(rawDetail?.images)
+  return cover ? { ...subject, cover_url: cover } : subject
+}
+
+async function enrichVisibleSubjectCovers(subjects: BangumiEntitySubject[]): Promise<BangumiEntitySubject[]> {
+  const visibleSubjects = subjects.slice(0, 12)
+  const enrichedVisibleSubjects = await Promise.all(
+    visibleSubjects.map(async subject => {
+      if (subject.cover_url) return subject
+      try {
+        const rawDetail = await requestBangumiJson<any>(`${BASE_URL}/subjects/${subject.id}`)
+        return mergeBangumiEntitySubjectCover(subject, rawDetail)
+      } catch {
+        return subject
+      }
+    })
+  )
+
+  return subjects.map((subject, index) => enrichedVisibleSubjects[index] || subject)
 }
 
 export function mapBangumiEntityPerson(raw: any): BangumiRelatedPerson {
@@ -128,7 +152,7 @@ export async function getBangumiCharacterPage(characterId: number): Promise<Bang
       asArray(items).map(mapBangumiEntityPerson).filter(item => item.id)
     ),
   ])
-  return { kind: 'character', detail, subjects, persons }
+  return { kind: 'character', detail, subjects: await enrichVisibleSubjectCovers(subjects), persons }
 }
 
 export async function getBangumiPersonPage(personId: number): Promise<BangumiPersonPageData> {
@@ -141,5 +165,5 @@ export async function getBangumiPersonPage(personId: number): Promise<BangumiPer
       asArray(items).map(mapBangumiEntityCharacter).filter(item => item.id)
     ),
   ])
-  return { kind: 'person', detail, subjects, characters }
+  return { kind: 'person', detail, subjects: await enrichVisibleSubjectCovers(subjects), characters }
 }

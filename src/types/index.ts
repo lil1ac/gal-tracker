@@ -40,6 +40,9 @@ export interface Route {
   name: string
   choices: string[]
   completed_at: number | null
+  target_kind?: 'custom' | 'character'
+  target_id?: number
+  target_name?: string
 }
 
 export interface Resource {

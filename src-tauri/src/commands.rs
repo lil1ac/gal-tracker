@@ -4,6 +4,8 @@ use crate::process_monitor::{ProcessConfig, SharedState};
 use std::path::PathBuf;
 use std::process::Command;
 
+const BANGUMI_USER_AGENT: &str = "Lil1ac/GAL-Tracker/0.1.0 (https://github.com/Lil1ac/gal-tracker)";
+
 #[derive(Debug, Clone, serde::Serialize)]
 pub struct RunningProcess {
     pub pid: u32,
@@ -132,6 +134,44 @@ pub async fn launch_game_exe(
         .map_err(|error| format!("启动失败：{error}"))?;
 
     Ok(())
+}
+
+#[command]
+pub async fn fetch_bangumi_private_json(url: String, token: Option<String>) -> Result<String, String> {
+    if !url.starts_with("https://next.bgm.tv/p1/") {
+        return Err("只能读取 Bangumi 私有 API".into());
+    }
+
+    let client = reqwest::Client::new();
+    let mut request = client
+        .get(url)
+        .header(reqwest::header::USER_AGENT, BANGUMI_USER_AGENT)
+        .header(reqwest::header::ACCEPT, "application/json");
+
+    if let Some(token) = token.filter(|value| !value.trim().is_empty()) {
+        request = request.bearer_auth(token.trim());
+    }
+
+    let response = request
+        .send()
+        .await
+        .map_err(|error| format!("读取 Bangumi 吐槽失败：{error}"))?;
+
+    if !response.status().is_success() {
+        let status = response.status().as_u16();
+        let message = match status {
+            401 => "Bangumi 吐槽接口需要登录或有效令牌".to_string(),
+            403 => "Bangumi 吐槽接口拒绝访问".to_string(),
+            500..=599 => format!("Bangumi 吐槽接口暂时不可用：{status}"),
+            _ => format!("Bangumi 吐槽接口请求失败：{status}"),
+        };
+        return Err(message);
+    }
+
+    response
+        .text()
+        .await
+        .map_err(|error| format!("解析 Bangumi 吐槽失败：{error}"))
 }
 
 #[cfg(test)]

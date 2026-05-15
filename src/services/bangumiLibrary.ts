@@ -6,7 +6,6 @@ import {
   getSubjectPersons,
   getSubjectRelations,
 } from './bangumiMeta'
-import { loadBangumiSnapshot, saveBangumiSnapshot } from './database'
 
 async function keepPrevious<T>(promise: Promise<T>, fallback: T): Promise<T> {
   try {
@@ -14,15 +13,6 @@ async function keepPrevious<T>(promise: Promise<T>, fallback: T): Promise<T> {
   } catch {
     return fallback
   }
-}
-
-export async function refreshBangumiSnapshot(gameId: string): Promise<BangumiSnapshot> {
-  const subjectId = Number(gameId)
-  if (!Number.isFinite(subjectId)) throw new Error('Bangumi 条目 ID 无效')
-  const previous = await loadBangumiSnapshot(gameId)
-  const snapshot = await fetchBangumiSnapshot(subjectId, gameId, previous || undefined)
-  await saveBangumiSnapshot(snapshot)
-  return snapshot
 }
 
 export async function fetchBangumiSnapshot(
