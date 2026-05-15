@@ -88,6 +88,17 @@ async function executeRaw(sql: string, params: unknown[] = []): Promise<void> {
   }
 }
 
+async function withTransaction(work: () => Promise<void>): Promise<void> {
+  await executeRaw('BEGIN TRANSACTION');
+  try {
+    await work();
+    await executeRaw('COMMIT');
+  } catch (error) {
+    await executeRaw('ROLLBACK');
+    throw error;
+  }
+}
+
 async function columnExists(table: string, column: string): Promise<boolean> {
   const rows = await selectRaw<{ name: string }>(`PRAGMA table_info(${table})`);
   return rows.some(row => row.name === column);
@@ -378,35 +389,37 @@ export async function importData(jsonStr: string): Promise<ImportResult> {
     throw new Error('Invalid backup: games must be an array');
   }
 
-  for (const game of games) {
-    await executeRaw(
-      `INSERT OR REPLACE INTO games (id, name, name_cn, cover_url, air_date, platform, status, rating, review, routes, tags, linked_resources, current_running, auto_status_prompted, auto_status_update_enabled, completed_at, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [game.id, game.name, game.name_cn, game.cover_url, game.air_date, JSON.stringify(game.platform), game.status, game.rating, game.review, JSON.stringify(game.routes), JSON.stringify(game.tags), JSON.stringify(game.linked_resources), game.current_running ? 1 : 0, game.auto_status_prompted ? 1 : 0, game.auto_status_update_enabled ? 1 : 0, game.completed_at ?? null, game.created_at, game.updated_at]
-    );
-  }
-
-  for (const session of sessions) {
-    await executeRaw(
-      `INSERT OR REPLACE INTO play_sessions (id, game_id, process_name, exe_path, started_at, ended_at, duration_seconds, end_reason)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      [session.id, session.game_id, session.process_name, session.exe_path, session.started_at, session.ended_at, session.duration_seconds, session.end_reason]
-    );
-  }
-
-  for (const process of processes) {
-    await executeRaw(
-      `INSERT OR REPLACE INTO game_processes (id, game_id, process_name, exe_path, match_type, enabled, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      [process.id, process.game_id, process.process_name, process.exe_path, process.match_type, process.enabled ? 1 : 0, process.created_at, process.updated_at]
-    );
-  }
-
-  for (const [key, value] of Object.entries(settings)) {
-    if (key !== 'bgm_api_key') {
-      await executeRaw('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)', [key, value]);
+  await withTransaction(async () => {
+    for (const game of games) {
+      await executeRaw(
+        `INSERT OR REPLACE INTO games (id, name, name_cn, cover_url, air_date, platform, status, rating, review, routes, tags, linked_resources, current_running, auto_status_prompted, auto_status_update_enabled, completed_at, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [game.id, game.name, game.name_cn, game.cover_url, game.air_date, JSON.stringify(game.platform), game.status, game.rating, game.review, JSON.stringify(game.routes), JSON.stringify(game.tags), JSON.stringify(game.linked_resources), game.current_running ? 1 : 0, game.auto_status_prompted ? 1 : 0, game.auto_status_update_enabled ? 1 : 0, game.completed_at ?? null, game.created_at, game.updated_at]
+      );
     }
-  }
+
+    for (const session of sessions) {
+      await executeRaw(
+        `INSERT OR REPLACE INTO play_sessions (id, game_id, process_name, exe_path, started_at, ended_at, duration_seconds, end_reason)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        [session.id, session.game_id, session.process_name, session.exe_path, session.started_at, session.ended_at, session.duration_seconds, session.end_reason]
+      );
+    }
+
+    for (const process of processes) {
+      await executeRaw(
+        `INSERT OR REPLACE INTO game_processes (id, game_id, process_name, exe_path, match_type, enabled, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        [process.id, process.game_id, process.process_name, process.exe_path, process.match_type, process.enabled ? 1 : 0, process.created_at, process.updated_at]
+      );
+    }
+
+    for (const [key, value] of Object.entries(settings)) {
+      if (key !== 'bgm_api_key') {
+        await executeRaw('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)', [key, value]);
+      }
+    }
+  });
 
   persistBrowserDb();
   return {

@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import {
   buildBangumiPrivateCommentsUrl,
   formatBangumiCommentError,
+  getBangumiCommentPageState,
   mapBangumiSubjectComments,
 } from './bangumiComments.js'
 
@@ -50,7 +51,7 @@ const comments = mapBangumiSubjectComments({
       id: 103,
       type: 5,
       rate: 0,
-      comment: '系统太慢，先放弃。',
+      comment: '系统太慢，先抛弃。',
       updatedAt: 0,
       user: {
         id: 44,
@@ -78,3 +79,21 @@ assert.equal(comments.comments[1].time, '')
 assert.equal(formatBangumiCommentError(401), 'Bangumi 吐槽接口需要登录或有效令牌')
 assert.equal(formatBangumiCommentError(403), 'Bangumi 吐槽接口拒绝访问')
 assert.equal(formatBangumiCommentError(500), 'Bangumi 吐槽接口暂时不可用：500')
+
+assert.deepEqual(getBangumiCommentPageState(49, 12, 24), {
+  page: 3,
+  totalPages: 5,
+  from: 25,
+  to: 36,
+  hasPrev: true,
+  hasNext: true,
+})
+
+assert.deepEqual(getBangumiCommentPageState(0, 12, 0), {
+  page: 1,
+  totalPages: 1,
+  from: 0,
+  to: 0,
+  hasPrev: false,
+  hasNext: false,
+})

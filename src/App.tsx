@@ -132,7 +132,7 @@ function AppContent() {
         activeView={activeView}
       />
       <div className="flex-1 flex flex-col min-w-0">
-        <header className="h-14 px-5 flex items-center justify-between border-b border-[var(--border)] bg-[var(--bg-secondary)] shrink-0">
+        <header className="app-topbar">
           {pageHeader || selectedGame || showSettings ? (
             <>
               <button
@@ -142,19 +142,19 @@ function AppContent() {
                   else if (showSettings) setShowSettings(false)
                   else handleBack()
                 }}
-                className="text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)] flex items-center gap-1 shrink-0"
+                className="app-back-button"
               >
                 <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                 </svg>
                 返回
               </button>
-              <h2 className="text-sm font-semibold text-[var(--text-primary)] truncate mx-3 min-w-0 flex-1">
+              <h2 className="app-topbar-title">
                 {pageHeader ? pageHeader.title : showSettings ? '设置' : (selectedGame?.name_cn || selectedGame?.name)}
               </h2>
             </>
           ) : (
-            <h2 className="text-sm font-semibold text-[var(--text-primary)]">
+            <h2 className="app-topbar-title">
               {VIEW_TITLES[activeView]}
             </h2>
           )}

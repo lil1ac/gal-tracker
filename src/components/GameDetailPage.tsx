@@ -9,6 +9,8 @@ import {
 } from '../services/bangumiDisplay'
 import { createGameFromBangumiMeta } from '../services/bangumiGame'
 import { fetchBangumiSnapshot } from '../services/bangumiLibrary'
+import { patchMyCollection } from '../services/bangumiMeta'
+import { buildCollectionPayload } from '../services/bangumiSync'
 import { query } from '../services/database'
 import { canLaunchProcess, isGameLaunchAvailable, launchGameProcess } from '../services/launchService'
 import { formatDuration, type GameActionKey, getGameActionItems } from '../services/libraryStats'
@@ -152,6 +154,8 @@ export function GameDetailPage({
   const [addedGameId, setAddedGameId] = useState<string | null>(null)
   const [quickCompleteDate, setQuickCompleteDate] = useState(() => new Date().toISOString().slice(0, 10))
   const [addError, setAddError] = useState('')
+  const [syncPrivate, setSyncPrivate] = useState(false)
+  const [syncMessage, setSyncMessage] = useState('')
 
   // Delete
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
@@ -401,6 +405,25 @@ export function GameDetailPage({
     try {
       await updateGame(addedGameId, { status, completed_at: status === 'completed' ? date : null })
     } catch { /* silently ignore */ }
+  }
+
+  const handleSyncBangumiCollection = async () => {
+    if (!activeGame) return
+    const subjectId = Number(activeGame.id)
+    if (!Number.isFinite(subjectId)) {
+      setSyncMessage('Bangumi 条目 ID 无效，无法同步收藏')
+      return
+    }
+    setBangumiBusy('collection-sync')
+    setSyncMessage('')
+    try {
+      await patchMyCollection(subjectId, buildCollectionPayload(activeGame, syncPrivate))
+      setSyncMessage('已同步到 Bangumi 收藏')
+    } catch (error) {
+      setSyncMessage(error instanceof Error ? error.message : '同步到 Bangumi 失败，请检查 Access Token')
+    } finally {
+      setBangumiBusy('')
+    }
   }
 
   // Entity / related navigation
@@ -924,8 +947,65 @@ export function GameDetailPage({
           />
         )}
 
-        {/* Bangumi refresh toolbar for library mode */}
         {isInLibrary && (
+          <section className="bangumi-section mt-6">
+            <div className="bangumi-section-head">
+              <div>
+                <h3>Bangumi 同步</h3>
+                <span>刷新条目资料，或把本地状态、评分、短评和标签同步到 Bangumi 收藏。</span>
+              </div>
+            </div>
+            <div className="bangumi-sync-actions">
+              <button type="button" onClick={() => loadBangumi('refresh')} disabled={!!bangumiBusy} className="btn btn-primary btn-sm">
+                {bangumiBusy === 'refresh' ? '刷新中...' : '刷新 Bangumi 资料'}
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  if (!currentMeta || !activeGame) return
+                  setBangumiBusy('apply')
+                  try {
+                    await updateGame(activeGame.id, {
+                      name: currentMeta.title || activeGame.name,
+                      name_cn: currentMeta.title_cn || activeGame.name_cn,
+                      cover_url: currentMeta.cover_url || activeGame.cover_url,
+                      air_date: currentMeta.air_date || activeGame.air_date,
+                      platform: currentMeta.platform.length > 0 ? currentMeta.platform : activeGame.platform,
+                    })
+                  } catch (error) {
+                    setSyncMessage(error instanceof Error ? error.message : '应用 Bangumi 资料到本地失败')
+                  } finally {
+                    setBangumiBusy('')
+                  }
+                }}
+                disabled={!!bangumiBusy}
+                className="btn btn-secondary btn-sm"
+              >
+                应用到本地
+              </button>
+              <label className="bangumi-sync-private">
+                <input
+                  type="checkbox"
+                  checked={syncPrivate}
+                  onChange={event => setSyncPrivate(event.target.checked)}
+                />
+                私密收藏
+              </label>
+              <button
+                type="button"
+                onClick={handleSyncBangumiCollection}
+                disabled={!!bangumiBusy || !activeGame}
+                className="btn btn-secondary btn-sm"
+              >
+                {bangumiBusy === 'collection-sync' ? '同步中...' : '同步到 Bangumi 收藏'}
+              </button>
+            </div>
+            {syncMessage && <p className="bangumi-message mt-2">{syncMessage}</p>}
+          </section>
+        )}
+
+        {/* Bangumi refresh toolbar for library mode */}
+        {false && isInLibrary && (
           <section className="bangumi-section mt-6">
             <div className="bangumi-section-head">
               <h3>Bangumi 资料刷新</h3>

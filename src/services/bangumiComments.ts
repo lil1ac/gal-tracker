@@ -138,6 +138,24 @@ export function formatBangumiCommentError(status: number): string {
   return `Bangumi 吐槽接口请求失败：${status}`
 }
 
+export function getBangumiCommentPageState(total: number, limit: number, offset: number) {
+  const safeLimit = clampLimit(limit)
+  const safeTotal = Math.max(0, Math.floor(total || 0))
+  const safeOffset = normalizeOffset(offset)
+  const totalPages = Math.max(1, Math.ceil(safeTotal / safeLimit))
+  const page = Math.min(totalPages, Math.floor(safeOffset / safeLimit) + 1)
+  const from = safeTotal === 0 ? 0 : safeOffset + 1
+  const to = safeTotal === 0 ? 0 : Math.min(safeOffset + safeLimit, safeTotal)
+  return {
+    page,
+    totalPages,
+    from,
+    to,
+    hasPrev: safeOffset > 0,
+    hasNext: safeOffset + safeLimit < safeTotal,
+  }
+}
+
 async function requestBangumiPrivateJson<T>(url: string): Promise<T> {
   const token = getBangumiAccessToken()
   if (isTauriEnv()) {

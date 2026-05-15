@@ -4,6 +4,7 @@ import { addManualPlaySession, deletePlaySession, loadGames, loadPlaySessions, e
 import {
   buildSessionSummaryMap,
   enrichGames,
+  filterLibraryGames,
   GameSortField,
   SortDirection,
   LibraryGame,
@@ -190,12 +191,6 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
   filteredGames: () => {
     const { filterStatus, searchQuery } = get()
-    return get().libraryGames().filter((game) => {
-      const matchesStatus = filterStatus === 'all' || game.status === filterStatus
-      const matchesSearch = !searchQuery ||
-        game.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (game.name_cn && game.name_cn.includes(searchQuery))
-      return matchesStatus && matchesSearch
-    })
+    return filterLibraryGames(get().libraryGames(), filterStatus, searchQuery)
   },
 }))

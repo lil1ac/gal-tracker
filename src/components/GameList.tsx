@@ -6,7 +6,13 @@ import { BrowseView } from './BrowseView'
 import { GameCard } from './GameCard'
 import { GameRow } from './GameRow'
 import { MemoryView } from './MemoryView'
-import { GameActionKey, LibraryGame } from '../services/libraryStats'
+import {
+  enrichGames,
+  filterLibraryGames,
+  GameActionKey,
+  LibraryGame,
+  sortLibraryGames,
+} from '../services/libraryStats'
 
 const statusLabels: Record<GameStatus | 'all', string> = {
   all: '全部',
@@ -156,15 +162,26 @@ function StatusTabs() {
 }
 
 export function GameList({ activeView, onOpenGameAction }: GameListProps) {
-  const filteredGames = useGameStore(s => s.filteredGames)
-  const libraryGames = useGameStore(s => s.libraryGames)
+  const games = useGameStore(s => s.games)
+  const sessionSummaries = useGameStore(s => s.sessionSummaries)
   const sessions = useGameStore(s => s.sessions)
   const viewMode = useGameStore(s => s.viewMode)
+  const filterStatus = useGameStore(s => s.filterStatus)
+  const searchQuery = useGameStore(s => s.searchQuery)
+  const sortField = useGameStore(s => s.sortField)
+  const sortDirection = useGameStore(s => s.sortDirection)
   const setSelectedGame = useGameStore(s => s.setSelectedGame)
-  const visibleGames = filteredGames()
+  const libraryGames = useMemo(
+    () => sortLibraryGames(enrichGames(games, sessionSummaries), sortField, sortDirection),
+    [games, sessionSummaries, sortField, sortDirection]
+  )
+  const visibleGames = useMemo(
+    () => filterLibraryGames(libraryGames, filterStatus, searchQuery),
+    [libraryGames, filterStatus, searchQuery]
+  )
 
   if (activeView === 'dashboard') {
-    return <Dashboard games={libraryGames()} sessions={sessions} onOpenGameAction={onOpenGameAction} />
+    return <Dashboard games={libraryGames} sessions={sessions} onOpenGameAction={onOpenGameAction} />
   }
 
   if (activeView === 'browse') {
@@ -172,7 +189,7 @@ export function GameList({ activeView, onOpenGameAction }: GameListProps) {
   }
 
   if (activeView === 'memory') {
-    return <MemoryView games={libraryGames()} sessions={sessions} onOpenGame={setSelectedGame} />
+    return <MemoryView games={libraryGames} sessions={sessions} onOpenGame={setSelectedGame} />
   }
 
   return (
@@ -180,8 +197,15 @@ export function GameList({ activeView, onOpenGameAction }: GameListProps) {
       <LibraryToolbar />
       <StatusTabs />
       {visibleGames.length === 0 ? (
-        <div className="py-20 text-center text-[var(--text-secondary)]">
-          还没有游戏，点击右上角添加
+        <div className="library-empty-state">
+          <div className="library-empty-mark">
+            <svg className="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M4 7.5A2.5 2.5 0 0 1 6.5 5h11A2.5 2.5 0 0 1 20 7.5v9A2.5 2.5 0 0 1 17.5 19h-11A2.5 2.5 0 0 1 4 16.5v-9Z" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h3m-1.5-1.5v3M15.5 11.25h.01M17.25 13.25h.01" />
+            </svg>
+          </div>
+          <h2>{searchQuery ? '没有匹配的游戏' : '还没有游戏'}</h2>
+          <p>{searchQuery ? '换个关键词或切换状态筛选试试。' : '点击右上角“添加游戏”，把正在玩、想玩或已完成的作品加入库中。'}</p>
         </div>
       ) : viewMode === 'list' ? (
         <div className="px-4 py-4 md:px-6">

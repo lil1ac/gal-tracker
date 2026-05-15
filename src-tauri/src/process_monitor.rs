@@ -1,4 +1,4 @@
-use sysinfo::System;
+use sysinfo::{ProcessesToUpdate, System};
 use std::sync::Arc;
 use tauri::{AppHandle, Emitter};
 use tokio::sync::Mutex;
@@ -102,7 +102,7 @@ pub fn start(app_handle: AppHandle, state: SharedState, mut stop_rx: tokio::sync
                 break;
             }
 
-            sys.refresh_all();
+            sys.refresh_processes(ProcessesToUpdate::All, true);
             let now = Instant::now();
 
             // Get configured processes from shared state (no blocking DB access)

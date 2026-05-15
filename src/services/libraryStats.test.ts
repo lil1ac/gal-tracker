@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { buildSessionSummaryMap, enrichGames, formatDuration, getGameActionItems, getRouteProgress, sortLibraryGames } from './libraryStats.js'
+import { buildSessionSummaryMap, enrichGames, filterLibraryGames, formatDuration, getGameActionItems, getRouteProgress, sortLibraryGames } from './libraryStats.js'
 import type { Game, PlaySession, Route } from '../types/index.js'
 
 test('buildSessionSummaryMap totals completed sessions and keeps latest session', () => {
@@ -132,6 +132,38 @@ test('sortLibraryGames sorts completed games by completion date descending', () 
   ], 'completed', 'desc')
 
   assert.equal(sorted[0].id, 'newer')
+})
+
+test('filterLibraryGames filters by status and normalized title query', () => {
+  const base = {
+    cover_url: '',
+    air_date: null,
+    platform: [],
+    rating: null,
+    review: null,
+    routes: [],
+    tags: [],
+    linked_resources: [],
+    current_running: false,
+    auto_status_prompted: false,
+    auto_status_update_enabled: false,
+    completed_at: null,
+    created_at: 1,
+    updated_at: 1,
+    total_seconds: 0,
+    session_count: 0,
+    last_played_at: null,
+    running_seconds: 0,
+    route_progress: { completed: 0, total: 0, percent: 0 },
+  }
+
+  const result = filterLibraryGames([
+    { ...base, id: 'g1', name: 'Summer Pockets', name_cn: '夏日口袋', status: 'playing' },
+    { ...base, id: 'g2', name: 'WHITE ALBUM2', name_cn: null, status: 'completed' },
+    { ...base, id: 'g3', name: 'CLANNAD', name_cn: '小镇家族', status: 'playing' },
+  ], 'playing', 'SUMMER')
+
+  assert.deepEqual(result.map(game => game.id), ['g1'])
 })
 
 test('getGameActionItems asks for completion date only when completed game misses it', () => {

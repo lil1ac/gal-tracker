@@ -134,3 +134,19 @@ export function sortLibraryGames(games: LibraryGame[], field: GameSortField, dir
     return direction === 'asc' ? cmp : -cmp
   })
 }
+
+export function filterLibraryGames(
+  games: LibraryGame[],
+  status: Game['status'] | 'all',
+  query: string
+): LibraryGame[] {
+  const normalizedQuery = query.trim().toLowerCase()
+  return games.filter((game) => {
+    if (status !== 'all' && game.status !== status) return false
+    if (!normalizedQuery) return true
+    return (
+      game.name.toLowerCase().includes(normalizedQuery) ||
+      (game.name_cn ?? '').toLowerCase().includes(normalizedQuery)
+    )
+  })
+}

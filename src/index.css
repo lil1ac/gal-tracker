@@ -13,6 +13,33 @@
 }
 
 @layer components {
+  .app-topbar {
+    @apply h-14 shrink-0 border-b px-4 md:px-5;
+    @apply flex items-center justify-between gap-3;
+    border-color: color-mix(in srgb, var(--border) 82%, transparent);
+    background:
+      linear-gradient(180deg, color-mix(in srgb, var(--bg-secondary) 96%, var(--surface-subtle)), var(--bg-secondary));
+    box-shadow: 0 1px 0 color-mix(in srgb, var(--bg-primary) 45%, transparent);
+  }
+
+  .app-topbar-title {
+    @apply min-w-0 flex-1 truncate text-sm font-semibold;
+    color: var(--text-primary);
+  }
+
+  .app-back-button {
+    @apply inline-flex h-8 shrink-0 items-center gap-1 rounded-md border px-2.5 text-sm font-medium transition-colors;
+    border-color: color-mix(in srgb, var(--border) 72%, transparent);
+    color: var(--text-secondary);
+    background: color-mix(in srgb, var(--bg-primary) 56%, transparent);
+  }
+
+  .app-back-button:hover {
+    border-color: color-mix(in srgb, var(--accent) 42%, var(--border));
+    color: var(--text-primary);
+    background: var(--surface-subtle);
+  }
+
   .dashboard-shell {
     @apply flex-1 overflow-y-auto px-4 py-4 md:px-6 md:py-6;
     background:
@@ -395,6 +422,29 @@
     color: var(--text-secondary);
   }
 
+  .library-empty-state {
+    @apply mx-auto mt-16 flex max-w-md flex-col items-center px-6 py-14 text-center;
+    color: var(--text-secondary);
+  }
+
+  .library-empty-mark {
+    @apply mb-4 flex h-14 w-14 items-center justify-center rounded-lg border;
+    border-color: color-mix(in srgb, var(--border) 74%, transparent);
+    background:
+      linear-gradient(145deg, color-mix(in srgb, var(--accent-soft) 62%, transparent), var(--bg-secondary));
+    color: var(--accent);
+    box-shadow: var(--shadow);
+  }
+
+  .library-empty-state h2 {
+    @apply text-base font-semibold;
+    color: var(--text-primary);
+  }
+
+  .library-empty-state p {
+    @apply mt-1 text-sm leading-6;
+  }
+
   @media (max-width: 640px) {
     .dashboard-hero {
       @apply p-4;
@@ -728,6 +778,10 @@ body {
     color: var(--accent);
   }
 
+  .bangumi-comment-toolbar {
+    @apply mb-3 flex flex-wrap items-center justify-between gap-2;
+  }
+
   .bangumi-comment-list {
     @apply space-y-3;
   }
@@ -757,6 +811,39 @@ body {
   .bangumi-comment-item p {
     @apply whitespace-pre-wrap text-sm leading-6;
     color: var(--text-primary);
+  }
+
+  .bangumi-comment-skeleton-list {
+    @apply space-y-3;
+  }
+
+  .bangumi-comment-skeleton {
+    @apply h-24 animate-pulse rounded-lg border;
+    border-color: color-mix(in srgb, var(--border) 78%, transparent);
+    background:
+      linear-gradient(90deg, var(--bg-primary), color-mix(in srgb, var(--surface-subtle) 88%, var(--bg-primary)), var(--bg-primary));
+    background-size: 200% 100%;
+  }
+
+  .bangumi-comment-pagination {
+    @apply mt-3 flex items-center justify-center gap-3 border-t pt-3 text-sm tabular-nums;
+    border-color: color-mix(in srgb, var(--border) 72%, transparent);
+    color: var(--text-secondary);
+  }
+
+  .bangumi-sync-actions {
+    @apply flex flex-wrap items-center gap-2;
+  }
+
+  .bangumi-sync-private {
+    @apply inline-flex min-h-[1.875rem] items-center gap-2 rounded-md border px-2.5 text-xs font-medium;
+    border-color: var(--border);
+    color: var(--text-secondary);
+    background: var(--bg-primary);
+  }
+
+  .bangumi-sync-private input {
+    @apply h-3.5 w-3.5 accent-[var(--accent)];
   }
 
   .session-timeline,
