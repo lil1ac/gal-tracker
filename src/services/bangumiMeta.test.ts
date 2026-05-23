@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict'
 import {
-  buildSubjectSearchUrl,
   buildSubjectSearchBody,
+  buildSubjectSearchUrl,
+  formatBangumiApiError,
   mapBangumiSubject,
   mapBangumiSubjectMeta,
   pickPrimaryTitle,
@@ -113,4 +114,20 @@ const rawSubject = {
 {
   assert.equal(pickPrimaryTitle({ title: 'A', title_cn: '甲' }), '甲')
   assert.equal(pickPrimaryTitle({ title: 'A', title_cn: '' }), 'A')
+}
+
+{
+  const response = new Response(JSON.stringify({
+    title: 'Bad Request',
+    description: 'rate must be between 1 and 10',
+    details: [{ field: 'rate', message: 'must be integer' }],
+  }), { status: 400 })
+  const message = await formatBangumiApiError(response, 'Bangumi collection update failed')
+  assert.equal(message, 'Bangumi collection update failed: 400 Bad Request - rate must be between 1 and 10；rate: must be integer')
+}
+
+{
+  const response = new Response('invalid subject_id', { status: 400 })
+  const message = await formatBangumiApiError(response, 'Bangumi collection create failed')
+  assert.equal(message, 'Bangumi collection create failed: 400 invalid subject_id')
 }

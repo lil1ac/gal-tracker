@@ -98,6 +98,10 @@ export function mapBangumiEntitySubject(raw: any): BangumiEntitySubject {
   }
 }
 
+export function buildBangumiEntitySubjectCardKey(subject: BangumiEntitySubject, index: number): string {
+  return `${subject.id}-${subject.relation || 'relation'}-${index}`
+}
+
 export function mergeBangumiEntitySubjectCover(subject: BangumiEntitySubject, rawDetail: any): BangumiEntitySubject {
   if (subject.cover_url) return subject
   const cover = pickBangumiImage(rawDetail?.images)

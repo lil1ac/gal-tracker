@@ -13,15 +13,15 @@ import { initDatabase, getSetting } from './services/database'
 import { setApiKey } from './services/bangumiApi'
 import { syncAllProcessConfigs } from './services/processService'
 import { useProcessMonitor } from './hooks/useProcessMonitor'
+import { buildAppTopbarModel } from './components/appTopbar'
 import type { GameActionKey } from './services/libraryStats'
-import type { Game } from './types'
-import { VIEW_TITLES } from './types'
+import type { Game, ViewId } from './types'
 import './styles/themes.css'
 
-function AppContent() {
+function AppContentFrame() {
   const [showSearch, setShowSearch] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
-  const [activeView, setActiveView] = useState<'dashboard' | 'library' | 'browse' | 'memory'>('dashboard')
+  const [activeView, setActiveView] = useState<ViewId>('dashboard')
   const [detailFocusTarget, setDetailFocusTarget] = useState<GameActionKey | null>(null)
   const [ready, setReady] = useState(false)
   const [startupError, setStartupError] = useState<string | null>(null)
@@ -100,6 +100,15 @@ function AppContent() {
     setSelectedGame(game)
   }
 
+  const topbar = buildAppTopbarModel({
+    activeView,
+    pageHeader,
+    selectedGame,
+    showSettings,
+    onSettingsBack: () => setShowSettings(false),
+    onSelectedGameBack: handleBack,
+  })
+
   if (!ready) {
     return (
       <div className="flex h-screen bg-[var(--bg-primary)] items-center justify-center">
@@ -121,7 +130,6 @@ function AppContent() {
   }
 
   return (
-    <PageHeaderProvider>
     <div className="flex h-screen bg-[var(--bg-primary)] text-[var(--text-primary)]">
       <Sidebar
         onOpenSettings={handleOpenSettings}
@@ -133,15 +141,11 @@ function AppContent() {
       />
       <div className="flex-1 flex flex-col min-w-0">
         <header className="app-topbar">
-          {pageHeader || selectedGame || showSettings ? (
+          {topbar.showBack ? (
             <>
               <button
                 type="button"
-                onClick={() => {
-                  if (pageHeader) pageHeader.onBack()
-                  else if (showSettings) setShowSettings(false)
-                  else handleBack()
-                }}
+                onClick={topbar.onBack}
                 className="app-back-button"
               >
                 <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -149,18 +153,14 @@ function AppContent() {
                 </svg>
                 返回
               </button>
-              <h2 className="app-topbar-title">
-                {pageHeader ? pageHeader.title : showSettings ? '设置' : (selectedGame?.name_cn || selectedGame?.name)}
-              </h2>
+              <h2 className="app-topbar-title">{topbar.title}</h2>
             </>
           ) : (
-            <h2 className="app-topbar-title">
-              {VIEW_TITLES[activeView]}
-            </h2>
+            <h2 className="app-topbar-title">{topbar.title}</h2>
           )}
           <div className="flex items-center gap-2 shrink-0">
             <ThemeToggle />
-            {!pageHeader && !selectedGame && !showSettings && (
+            {topbar.showAddGame && (
               <button
                 type="button"
                 onClick={() => { setActiveView('library'); setShowSearch(true) }}
@@ -196,6 +196,13 @@ function AppContent() {
       )}
       {showSearch && <SearchModal onClose={() => setShowSearch(false)} />}
     </div>
+  )
+}
+
+function AppContent() {
+  return (
+    <PageHeaderProvider>
+      <AppContentFrame />
     </PageHeaderProvider>
   )
 }

@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import {
   createCharacterRoute,
   createCustomRoute,
+  normalizeTagInput,
   normalizeRoute,
   toggleRouteCompletion,
 } from './gameRoutes.js'
@@ -46,3 +47,8 @@ assert.equal(completed.target_id, 42)
 const reopened = toggleRouteCompletion(completed, 4000)
 assert.equal(reopened.completed_at, null)
 assert.equal(reopened.target_kind, 'character')
+
+assert.deepEqual(
+  normalizeTagInput(' Galgame, galgame, GALGAME, 泣きゲー, , 剧情 '),
+  ['Galgame', '泣きゲー', '剧情']
+)

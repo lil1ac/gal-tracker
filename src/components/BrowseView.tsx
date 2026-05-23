@@ -1,5 +1,5 @@
 ﻿import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { searchBangumiSubjectsWithTotal } from '../services/bangumiMeta'
+import { searchBangumiCharacters, searchBangumiPersons, searchBangumiSubjectsWithTotal, type BangumiEntitySearchItem } from '../services/bangumiMeta'
 import { fetchBangumiSnapshot } from '../services/bangumiLibrary'
 import { useGameStore } from '../store/gameStore'
 import { BangumiEntityDetailPanel, type BangumiEntityTarget } from './BangumiEntityDetailPanel'
@@ -22,11 +22,11 @@ const PAGE_SIZE = 42
 export function createDefaultBrowseFilters(category: BrowseCategory = 'top_ranked'): BrowseFilterState {
   switch (category) {
     case 'top_ranked':
-      return { category, keyword: '', sort: 'rank', year: '', minScore: '', minRank: '1', maxRank: '', tags: [], nsfw: true }
+      return { category, searchKind: 'subject', keyword: '', sort: 'rank', year: '', minScore: '', minRank: '1', maxRank: '', tags: [], nsfw: true }
     case 'popular':
-      return { category, keyword: '', sort: 'heat', year: '', minScore: '', minRank: '', maxRank: '', tags: [], nsfw: true }
+      return { category, searchKind: 'subject', keyword: '', sort: 'heat', year: '', minScore: '', minRank: '', maxRank: '', tags: [], nsfw: true }
     case 'latest':
-      return { category, keyword: '', sort: 'heat', year: '2026', minScore: '', minRank: '', maxRank: '', tags: [], nsfw: true }
+      return { category, searchKind: 'subject', keyword: '', sort: 'heat', year: '2026', minScore: '', minRank: '', maxRank: '', tags: [], nsfw: true }
   }
 }
 
@@ -39,6 +39,7 @@ export function BrowseView() {
 
   const [filters, setFilters] = useState<BrowseFilterState>(() => createDefaultBrowseFilters())
   const [results, setResults] = useState<BangumiSubject[]>([])
+  const [entityResults, setEntityResults] = useState<BangumiEntitySearchItem[]>([])
   const [total, setTotal] = useState(0)
   const [offset, setOffset] = useState(0)
   const [loading, setLoading] = useState(false)
@@ -50,10 +51,11 @@ export function BrowseView() {
 
   const activeRoute = getActiveBrowseRoute(routeStack)
   const libraryIds = useMemo(() => new Set(games.map(game => game.id)), [games])
+  const visibleCount = filters.searchKind === 'subject' ? results.length : entityResults.length
 
   const hasMorePages = total > 0
-    ? offset + results.length < total
-    : results.length > 0 && results.length % PAGE_SIZE === 0
+    ? offset + visibleCount < total
+    : visibleCount > 0 && visibleCount % PAGE_SIZE === 0
 
   const runSearch = useCallback(async (nextFilters: BrowseFilterState, nextOffset: number, append = false) => {
     const requestId = searchSeq.current + 1
@@ -67,27 +69,38 @@ export function BrowseView() {
     setError('')
 
     try {
-      const { items, total: nextTotal } = await searchBangumiSubjectsWithTotal({
-        keyword: nextFilters.keyword,
-        sort: nextFilters.sort,
-        year: nextFilters.year ? Number(nextFilters.year) : null,
-        minScore: nextFilters.minScore ? Number(nextFilters.minScore) : null,
-        minRank: nextFilters.minRank ? Number(nextFilters.minRank) : null,
-        maxRank: nextFilters.maxRank ? Number(nextFilters.maxRank) : null,
-        tags: nextFilters.tags.length > 0 ? nextFilters.tags : undefined,
-        nsfw: nextFilters.nsfw,
-        limit: PAGE_SIZE,
-        offset: nextOffset,
-      })
+      const { items, total: nextTotal } = nextFilters.searchKind === 'character'
+        ? await searchBangumiCharacters(nextFilters.keyword, PAGE_SIZE, nextOffset)
+        : nextFilters.searchKind === 'person'
+          ? await searchBangumiPersons(nextFilters.keyword, PAGE_SIZE, nextOffset)
+          : await searchBangumiSubjectsWithTotal({
+              keyword: nextFilters.keyword,
+              sort: nextFilters.sort,
+              year: nextFilters.year ? Number(nextFilters.year) : null,
+              minScore: nextFilters.minScore ? Number(nextFilters.minScore) : null,
+              minRank: nextFilters.minRank ? Number(nextFilters.minRank) : null,
+              maxRank: nextFilters.maxRank ? Number(nextFilters.maxRank) : null,
+              tags: nextFilters.tags.length > 0 ? nextFilters.tags : undefined,
+              nsfw: nextFilters.nsfw,
+              limit: PAGE_SIZE,
+              offset: nextOffset,
+            })
 
       if (requestId !== searchSeq.current) return
 
-      const filtered = nextFilters.sort === 'rank' ? items.filter(subject => subject.rank !== null) : items
+      const filtered = nextFilters.searchKind === 'subject' && nextFilters.sort === 'rank'
+        ? (items as BangumiSubject[]).filter(subject => subject.rank !== null)
+        : items
 
       if (append) {
-        setResults(prev => [...prev, ...filtered])
+        if (nextFilters.searchKind === 'subject') {
+          setResults(prev => [...prev, ...(filtered as BangumiSubject[])])
+        } else {
+          setEntityResults(prev => [...prev, ...(filtered as BangumiEntitySearchItem[])])
+        }
       } else {
-        setResults(filtered)
+        setResults(nextFilters.searchKind === 'subject' ? filtered as BangumiSubject[] : [])
+        setEntityResults(nextFilters.searchKind === 'subject' ? [] : filtered as BangumiEntitySearchItem[])
       }
       setTotal(nextTotal)
       setOffset(nextOffset)
@@ -112,7 +125,7 @@ export function BrowseView() {
   const loadMoreRef = useRef<() => void>()
   loadMoreRef.current = () => {
     if (loading || loadingMore || !hasMorePages) return
-    runSearch(filters, offset + results.length, true)
+    runSearch(filters, offset + visibleCount, true)
   }
 
   useEffect(() => {
@@ -131,7 +144,7 @@ export function BrowseView() {
 
     observer.observe(sentinel)
     return () => observer.disconnect()
-  }, [results.length > 0]) // re-attach when results become non-empty
+  }, [visibleCount > 0]) // re-attach when results become non-empty
 
   const scrollToTop = () => {
     scrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' })
@@ -178,7 +191,7 @@ export function BrowseView() {
   }
 
   const handleNextPage = () => {
-    const nextOffset = offset + results.length
+    const nextOffset = offset + visibleCount
     setRouteStack(browseClose)
     runSearch(filters, nextOffset)
     scrollToTop()
@@ -226,13 +239,13 @@ export function BrowseView() {
     }
   }
 
-  const handleOpenEntity = (target: BangumiEntityTarget) => {
+  const handleOpenEntity = useCallback((target: BangumiEntityTarget) => {
     setRouteStack(prev => browseOpenEntity(prev, target))
-  }
+  }, [])
 
-  const handleBack = () => {
+  const handleBack = useCallback(() => {
     setRouteStack(browseBack)
-  }
+  }, [])
 
   // Register header override for drilldown routes
   const pageHeaderState = useMemo((): Parameters<typeof usePageHeaderOverride>[0] => {
@@ -246,11 +259,11 @@ export function BrowseView() {
   usePageHeaderOverride(pageHeaderState, [pageHeaderState])
 
   const pageNum = offset > 0 ? Math.floor(offset / PAGE_SIZE) + 1 : 1
-  const totalPages = total > 0 ? Math.ceil(total / PAGE_SIZE) : (results.length >= PAGE_SIZE ? pageNum + 1 : pageNum)
-  const hasNextPage = total > 0 ? offset + results.length < total : results.length >= PAGE_SIZE
+  const totalPages = total > 0 ? Math.ceil(total / PAGE_SIZE) : (visibleCount >= PAGE_SIZE ? pageNum + 1 : pageNum)
+  const hasNextPage = total > 0 ? offset + visibleCount < total : visibleCount >= PAGE_SIZE
   const hasPrevPage = offset > 0
-  const showingFrom = results.length > 0 ? offset + 1 : 0
-  const showingTo = offset + results.length
+  const showingFrom = visibleCount > 0 ? offset + 1 : 0
+  const showingTo = offset + visibleCount
 
   return (
     <div className="browse-shell">
@@ -269,11 +282,11 @@ export function BrowseView() {
             <div className="min-w-0">
               <h1>发现 Bangumi 游戏</h1>
               <p>
-                {total > 0 ? `显示 ${showingFrom}-${showingTo} / ${total} 个结果` : `${results.length} 个结果`}
+                {total > 0 ? `显示 ${showingFrom}-${showingTo} / ${total} 个结果` : `${visibleCount} 个结果`}
                 {lastUpdatedAt ? ` · ${new Date(lastUpdatedAt).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })} 更新` : ''}
               </p>
             </div>
-            {error && results.length > 0 && (
+            {error && visibleCount > 0 && (
               <button type="button" onClick={handleSearch} className="browse-inline-error">
                 {error}，点击重试
               </button>
@@ -281,7 +294,7 @@ export function BrowseView() {
           </div>
 
           <div className="browse-content" ref={scrollRef}>
-            {loading && results.length === 0 && (
+            {loading && visibleCount === 0 && (
               <div className="browse-grid">
                 {Array.from({ length: 12 }).map((_, index) => (
                   <div key={index} className="browse-skeleton rounded-lg overflow-hidden bg-[var(--bg-secondary)] border border-[var(--border)]" style={{ animationDelay: `${index * 60}ms` }}>
@@ -295,7 +308,7 @@ export function BrowseView() {
               </div>
             )}
 
-            {!loading && error && results.length === 0 && (
+            {!loading && error && visibleCount === 0 && (
               <div className="py-20 text-center">
                 <p className="text-sm text-red-500">{error}</p>
                 <button type="button" onClick={handleSearch} className="btn btn-secondary btn-sm mt-3">
@@ -304,30 +317,51 @@ export function BrowseView() {
               </div>
             )}
 
-            {!loading && !error && results.length === 0 && (
+            {!loading && !error && visibleCount === 0 && (
               <div className="py-20 text-center text-sm text-[var(--text-secondary)]">
-                没有找到符合条件的游戏，试试调整关键词或筛选条件。
+                没有找到符合条件的结果，试试调整关键词或筛选条件。
               </div>
             )}
 
-            {results.length > 0 && (
+            {visibleCount > 0 && (
               <>
                 {loading && (
                   <div className="browse-loading-bar">
                     <div className="browse-loading-bar-inner" />
                   </div>
                 )}
-                <div className="browse-grid">
-                  {results.map((subject, index) => (
-                    <div key={`${subject.id}-${index}`} className="browse-card-enter" style={{ animationDelay: `${Math.min(index % PAGE_SIZE, 20) * 30}ms` }}>
-                      <BrowseGameCard
-                        subject={subject}
-                        isInLibrary={libraryIds.has(String(subject.id))}
-                        onViewDetail={handleViewDetail}
-                      />
-                    </div>
-                  ))}
-                </div>
+                {filters.searchKind === 'subject' ? (
+                  <div className="browse-grid">
+                    {results.map((subject, index) => (
+                      <div key={`${subject.id}-${index}`} className="browse-card-enter" style={{ animationDelay: `${Math.min(index % PAGE_SIZE, 20) * 30}ms` }}>
+                        <BrowseGameCard
+                          subject={subject}
+                          isInLibrary={libraryIds.has(String(subject.id))}
+                          onViewDetail={handleViewDetail}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="browse-entity-grid">
+                    {entityResults.map((item, index) => (
+                      <button
+                        key={`${item.kind}-${item.id}-${index}`}
+                        type="button"
+                        onClick={() => handleOpenEntity({ kind: item.kind, id: item.id, title: item.name })}
+                        className="browse-entity-card browse-card-enter"
+                        style={{ animationDelay: `${Math.min(index % PAGE_SIZE, 20) * 30}ms` }}
+                      >
+                        {item.image ? <img src={item.image} alt="" loading="lazy" /> : <span>{item.name.slice(0, 1)}</span>}
+                        <div>
+                          <strong>{item.name}</strong>
+                          <small>{item.kind === 'character' ? '角色' : '人物'}</small>
+                          {item.summary && <p>{item.summary}</p>}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
 
                 {/* Sentinel for infinite scroll */}
                 <div ref={sentinelRef} className="h-px" />
@@ -340,7 +374,7 @@ export function BrowseView() {
                 )}
 
                 {/* End-of-results marker */}
-                {!hasMorePages && results.length > PAGE_SIZE && (
+                {!hasMorePages && visibleCount > PAGE_SIZE && (
                   <div className="py-4 text-center text-xs text-[var(--text-secondary)]">
                     已加载全部结果
                   </div>
@@ -349,7 +383,7 @@ export function BrowseView() {
             )}
           </div>
 
-          {results.length > 0 && (
+          {visibleCount > 0 && (
             <div className="browse-pagination">
               <button type="button" onClick={handlePrevPage} disabled={!hasPrevPage || loading} className="btn btn-secondary btn-sm">
                 <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">

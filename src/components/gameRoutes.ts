@@ -47,3 +47,17 @@ export function toggleRouteCompletion(route: Route, now = Date.now()): Route {
     completed_at: route.completed_at ? null : now,
   }
 }
+
+export function normalizeTagInput(value: string): string[] {
+  const seen = new Set<string>()
+  return value
+    .split(',')
+    .map(tag => tag.trim())
+    .filter(tag => {
+      if (!tag) return false
+      const key = tag.toLocaleLowerCase()
+      if (seen.has(key)) return false
+      seen.add(key)
+      return true
+    })
+}

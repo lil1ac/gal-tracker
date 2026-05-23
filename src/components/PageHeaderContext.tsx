@@ -48,5 +48,5 @@ export function usePageHeaderOverride(state: PageHeaderState | null, deps: unkno
     if (!state) return
     const unregister = register(state)
     return unregister
-  }, deps)
+  }, [register, state, ...deps])
 }

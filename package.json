@@ -7,7 +7,7 @@
     "build": "tsc && vite build",
     "preview": "vite preview",
     "tauri": "tauri",
-    "test": "tsc -p tsconfig.test.json && node .tmp-tests/services/libraryStats.test.js && node .tmp-tests/services/launchService.test.js && node .tmp-tests/services/dashboardStats.test.js && node .tmp-tests/services/memoryStats.test.js && node .tmp-tests/services/bangumiMeta.test.js && node .tmp-tests/services/bangumiGame.test.js && node .tmp-tests/services/bangumiDisplay.test.js && node .tmp-tests/services/bangumiEntity.test.js && node .tmp-tests/services/bangumiSync.test.js && node .tmp-tests/services/bangumiComments.test.js && node .tmp-tests/components/browseOverlayLayout.test.js && node .tmp-tests/components/browseNavigation.test.js && node .tmp-tests/components/gameDetailTabs.test.js && node .tmp-tests/components/gameRoutes.test.js"
+    "test": "tsc -p tsconfig.test.json && node .tmp-tests/services/libraryStats.test.js && node .tmp-tests/services/launchService.test.js && node .tmp-tests/services/dashboardStats.test.js && node .tmp-tests/services/memoryStats.test.js && node .tmp-tests/services/bangumiMeta.test.js && node .tmp-tests/services/bangumiGame.test.js && node .tmp-tests/services/bangumiDisplay.test.js && node .tmp-tests/services/bangumiEntity.test.js && node .tmp-tests/services/bangumiSync.test.js && node .tmp-tests/services/bangumiComments.test.js && node .tmp-tests/components/appTopbar.test.js && node .tmp-tests/components/browseFilterLayout.test.js && node .tmp-tests/components/browseOverlayLayout.test.js && node .tmp-tests/components/browseNavigation.test.js && node .tmp-tests/components/gameDetailTabs.test.js && node .tmp-tests/components/gameRoutes.test.js"
   },
   "dependencies": {
     "@tauri-apps/api": "^2.0.0",

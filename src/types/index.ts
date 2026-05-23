@@ -239,8 +239,11 @@ export interface BangumiSnapshot {
 
 export type BrowseCategory = 'top_ranked' | 'popular' | 'latest'
 
+export type BrowseSearchKind = 'subject' | 'character' | 'person'
+
 export interface BrowseFilterState {
   category: BrowseCategory
+  searchKind: BrowseSearchKind
   keyword: string
   sort: 'match' | 'heat' | 'rank' | 'score'
   year: string

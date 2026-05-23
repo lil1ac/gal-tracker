@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import {
   buildBangumiEntityUrl,
+  buildBangumiEntitySubjectCardKey,
   mapBangumiCharacterDetail,
   mapBangumiEntityCharacter,
   mapBangumiEntitySubject,
@@ -12,6 +13,18 @@ import {
   assert.equal(buildBangumiEntityUrl('character', 123), 'https://bgm.tv/character/123')
   assert.equal(buildBangumiEntityUrl('person', 456), 'https://bgm.tv/person/456')
   assert.equal(buildBangumiEntityUrl('subject', 789), 'https://bgm.tv/subject/789')
+}
+
+{
+  const subject = mapBangumiEntitySubject({
+    id: 51730,
+    type: 4,
+    name: 'Same Game',
+    relation: '出演',
+  })
+
+  assert.equal(buildBangumiEntitySubjectCardKey(subject, 0), '51730-出演-0')
+  assert.equal(buildBangumiEntitySubjectCardKey(subject, 1), '51730-出演-1')
 }
 
 {

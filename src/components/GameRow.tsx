@@ -91,8 +91,8 @@ export function GameRow({ game }: GameRowProps) {
           </div>
           {visibleTags.length > 0 && (
             <div className="game-list-tags">
-              {visibleTags.map((tag) => (
-                <span key={tag} className="game-list-tag">{tag}</span>
+              {visibleTags.map((tag, i) => (
+                <span key={`${tag}-${i}`} className="game-list-tag">{tag}</span>
               ))}
               {game.tags.length > 3 && (
                 <span className="game-list-tag-more">+{game.tags.length - 3}</span>

@@ -204,7 +204,7 @@ export function RecordsPanel({
           <div className="mt-3">
             {game.tags.length > 0 && (
               <div className="mb-2 flex flex-wrap gap-1.5">
-                {game.tags.map(tag => <span key={tag} className="record-tag">{tag}</span>)}
+                {game.tags.map((tag, index) => <span key={`${tag}-${index}`} className="record-tag">{tag}</span>)}
               </div>
             )}
             <input

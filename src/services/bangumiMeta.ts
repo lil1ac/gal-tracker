@@ -1,6 +1,7 @@
 import type {
   BangumiCollectionItem,
   BangumiEpisode,
+  BangumiEntityKind,
   BangumiRelatedCharacter,
   BangumiRelatedPerson,
   BangumiRelatedSubject,
@@ -23,6 +24,14 @@ export interface SubjectSearchOptions {
   maxRank?: number | null
   tags?: string[]
   nsfw?: boolean
+}
+
+export interface BangumiEntitySearchItem {
+  id: number
+  name: string
+  summary: string
+  image: string
+  kind: Extract<BangumiEntityKind, 'character' | 'person'>
 }
 
 interface RequestOptions {
@@ -65,6 +74,57 @@ async function requestJson<T>(url: string, init: RequestInit = {}, options: Requ
 
 export async function requestBangumiJson<T>(url: string, init: RequestInit = {}, options: RequestOptions = {}): Promise<T> {
   return requestJson<T>(url, init, options)
+}
+
+function stringifyErrorDetail(detail: unknown): string {
+  if (!detail) return ''
+  if (typeof detail === 'string') return detail
+  if (Array.isArray(detail)) {
+    return detail
+      .map(item => {
+        if (typeof item === 'string') return item
+        if (item && typeof item === 'object') {
+          const record = item as Record<string, unknown>
+          const field = typeof record.field === 'string' ? record.field : ''
+          const message = typeof record.message === 'string'
+            ? record.message
+            : (typeof record.description === 'string' ? record.description : '')
+          return field && message ? `${field}: ${message}` : message || field
+        }
+        return ''
+      })
+      .filter(Boolean)
+      .join('；')
+  }
+  if (typeof detail === 'object') {
+    const record = detail as Record<string, unknown>
+    return Object.entries(record)
+      .map(([key, value]) => `${key}: ${typeof value === 'string' ? value : JSON.stringify(value)}`)
+      .join('；')
+  }
+  return ''
+}
+
+export async function formatBangumiApiError(response: Response, fallback: string): Promise<string> {
+  const text = await response.text().catch(() => '')
+  const statusPart = `${response.status}${response.statusText ? ` ${response.statusText}` : ''}`
+  if (!text.trim()) return `${fallback}: ${statusPart}`
+
+  try {
+    const data = JSON.parse(text) as Record<string, unknown>
+    const title = typeof data.title === 'string'
+      ? data.title
+      : (typeof data.error === 'string' ? data.error : '')
+    const description = typeof data.description === 'string'
+      ? data.description
+      : (typeof data.message === 'string' ? data.message : '')
+    const details = stringifyErrorDetail(data.details ?? data.detail ?? data.errors)
+    const body = [title, description].filter(Boolean).join(' - ')
+    const suffix = [body, details].filter(Boolean).join('；')
+    return suffix ? `${fallback}: ${statusPart} ${suffix}` : `${fallback}: ${statusPart}`
+  } catch {
+    return `${fallback}: ${statusPart} ${text.trim()}`
+  }
 }
 
 function asArray<T>(value: T[] | undefined | null): T[] {
@@ -207,6 +267,48 @@ export async function searchBangumiSubjectsWithTotal(options: SubjectSearchOptio
   }
 }
 
+function mapBangumiEntitySearchItem(raw: any, kind: Extract<BangumiEntityKind, 'character' | 'person'>): BangumiEntitySearchItem {
+  return {
+    id: Number(raw.id),
+    name: raw.name || '',
+    summary: raw.summary || raw.infobox?.[0]?.value || '',
+    image: pickCover(raw.images),
+    kind,
+  }
+}
+
+export async function searchBangumiCharacters(keyword: string, limit = 24, offset = 0): Promise<{ items: BangumiEntitySearchItem[]; total: number }> {
+  const params = new URLSearchParams({
+    limit: String(clampLimit(limit)),
+    offset: String(normalizeOffset(offset)),
+  })
+  const result = await requestJson<any>(`${BASE_URL}/search/characters?${params.toString()}`, {
+    method: 'POST',
+    body: JSON.stringify({ keyword: keyword.trim() }),
+  })
+  const items = Array.isArray(result) ? result : (result.data || [])
+  return {
+    items: items.map((item: any) => mapBangumiEntitySearchItem(item, 'character')).filter((item: BangumiEntitySearchItem) => item.id),
+    total: typeof result.total === 'number' ? result.total : items.length,
+  }
+}
+
+export async function searchBangumiPersons(keyword: string, limit = 24, offset = 0): Promise<{ items: BangumiEntitySearchItem[]; total: number }> {
+  const params = new URLSearchParams({
+    limit: String(clampLimit(limit)),
+    offset: String(normalizeOffset(offset)),
+  })
+  const result = await requestJson<any>(`${BASE_URL}/search/persons?${params.toString()}`, {
+    method: 'POST',
+    body: JSON.stringify({ keyword: keyword.trim() }),
+  })
+  const items = Array.isArray(result) ? result : (result.data || [])
+  return {
+    items: items.map((item: any) => mapBangumiEntitySearchItem(item, 'person')).filter((item: BangumiEntitySearchItem) => item.id),
+    total: typeof result.total === 'number' ? result.total : items.length,
+  }
+}
+
 export async function getSubjectMeta(subjectId: number): Promise<BangumiSubjectMeta> {
   const data = await requestJson<any>(`${BASE_URL}/subjects/${subjectId}`)
   return mapBangumiSubjectMeta(data)
@@ -267,8 +369,19 @@ export async function getSubjectEpisodes(subjectId: number): Promise<BangumiEpis
   }))
 }
 
-export async function getMyBangumiUser(): Promise<{ username: string; nickname?: string }> {
-  return requestJson<{ username: string; nickname?: string }>(`${BASE_URL}/me`)
+export async function getMyBangumiUser(): Promise<{ id?: number; username: string; nickname?: string; avatar?: Record<string, string> }> {
+  return requestJson<{ id?: number; username: string; nickname?: string; avatar?: Record<string, string> }>(`${BASE_URL}/me`)
+}
+
+export async function setBangumiEntityCollect(kind: Extract<BangumiEntityKind, 'character' | 'person'>, id: number, collected: boolean): Promise<void> {
+  const path = kind === 'character' ? 'characters' : 'persons'
+  const response = await fetch(`${BASE_URL}/${path}/${id}/collect`, {
+    method: collected ? 'POST' : 'DELETE',
+    headers: getHeaders(),
+  })
+  if (!response.ok) {
+    throw new Error(await formatBangumiApiError(response, collected ? 'Bangumi collect failed' : 'Bangumi uncollect failed'))
+  }
 }
 
 export async function getUserGameCollections(username: string): Promise<BangumiCollectionItem[]> {
@@ -287,7 +400,7 @@ export async function getUserGameCollections(username: string): Promise<BangumiC
   return all
 }
 
-export async function patchMyCollection(subjectId: number, payload: Record<string, unknown>): Promise<void> {
+export async function patchMyCollection(subjectId: number, payload: object): Promise<void> {
   const response = await fetch(`${BASE_URL}/users/-/collections/${subjectId}`, {
     method: 'PATCH',
     headers: getHeaders(),
@@ -299,8 +412,8 @@ export async function patchMyCollection(subjectId: number, payload: Record<strin
       headers: getHeaders(),
       body: JSON.stringify(payload),
     })
-    if (!create.ok) throw new Error(`Bangumi collection create failed: ${create.status}`)
+    if (!create.ok) throw new Error(await formatBangumiApiError(create, 'Bangumi collection create failed'))
     return
   }
-  if (!response.ok) throw new Error(`Bangumi collection update failed: ${response.status}`)
+  if (!response.ok) throw new Error(await formatBangumiApiError(response, 'Bangumi collection update failed'))
 }

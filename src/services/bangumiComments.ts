@@ -24,7 +24,7 @@ export interface BangumiSubjectInterestComment {
   }
   type: number
   rate: number
-  comment: string
+  comment?: string
   updatedAt: number
   reactions?: unknown[]
 }
@@ -75,15 +75,19 @@ function normalizeOffset(offset: number | undefined): number {
   return Math.max(0, Math.floor(offset))
 }
 
+function appendPrivatePageParams(params: URLSearchParams, options: BangumiPrivateCommentOptions) {
+  if (options.type) params.set('type', String(Math.floor(options.type)))
+  params.set('limit', String(clampLimit(options.limit)))
+  params.set('offset', String(normalizeOffset(options.offset)))
+}
+
 export function buildBangumiPrivateCommentsUrl(
   target: Pick<BangumiCommentTarget, 'kind' | 'id'>,
   options: BangumiPrivateCommentOptions = {}
 ): string {
   if (target.kind !== 'subject') throw new Error('仅支持条目吐槽')
   const params = new URLSearchParams()
-  if (options.type) params.set('type', String(Math.floor(options.type)))
-  params.set('limit', String(clampLimit(options.limit)))
-  params.set('offset', String(normalizeOffset(options.offset)))
+  appendPrivatePageParams(params, options)
   return `${PRIVATE_API_BASE_URL}/subjects/${target.id}/comments?${params.toString()}`
 }
 
@@ -164,10 +168,7 @@ async function requestBangumiPrivateJson<T>(url: string): Promise<T> {
     return JSON.parse(text) as T
   }
 
-  const headers: HeadersInit = {
-    'Content-Type': 'application/json',
-    'User-Agent': 'Lil1ac/GAL-Tracker/0.1.0 (https://github.com/Lil1ac/gal-tracker)',
-  }
+  const headers: HeadersInit = { 'Content-Type': 'application/json' }
   if (token) headers.Authorization = `Bearer ${token}`
   const response = await fetch(url, { headers })
   if (!response.ok) throw new Error(formatBangumiCommentError(response.status))

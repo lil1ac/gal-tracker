@@ -917,6 +917,49 @@ body {
     color: var(--text-secondary);
   }
 
+  .settings-user-card {
+    @apply mt-3 inline-flex items-center gap-3 rounded-lg border px-3 py-2.5;
+    border-color: var(--border);
+    background: var(--bg-primary);
+  }
+
+  .settings-user-card img,
+  .settings-user-card > span {
+    @apply h-10 w-10 rounded-lg object-cover;
+  }
+
+  .settings-user-card > span {
+    @apply inline-flex items-center justify-center font-bold;
+    background: var(--surface-subtle);
+    color: var(--text-secondary);
+  }
+
+  .settings-user-card strong,
+  .settings-user-card small {
+    @apply block;
+  }
+
+  .settings-user-card small {
+    @apply text-xs;
+    color: var(--text-secondary);
+  }
+
+  .settings-diff-panel {
+    @apply mt-3 rounded-lg border px-3 py-2.5;
+    border-color: var(--border);
+    background: var(--bg-primary);
+  }
+
+  .settings-diff-panel strong {
+    @apply block text-sm;
+    color: var(--text-primary);
+  }
+
+  .settings-diff-panel ul {
+    @apply mt-2 grid gap-1 text-[13px];
+    color: var(--text-secondary);
+  }
+
   .session-timeline,
   .route-board,
   .resource-list {
@@ -1340,6 +1383,23 @@ body {
     background: var(--bg-secondary);
   }
 
+  .browse-subject-nav {
+    @apply flex flex-wrap items-center justify-between gap-3 rounded-md border px-3 py-2;
+    border-color: color-mix(in srgb, var(--border) 76%, transparent);
+    background: color-mix(in srgb, var(--bg-primary) 62%, transparent);
+  }
+
+  .browse-subject-nav span,
+  .browse-search-scope span {
+    @apply block text-[11px] font-medium;
+    color: var(--text-secondary);
+  }
+
+  .browse-subject-nav strong {
+    @apply block text-sm font-semibold;
+    color: var(--text-primary);
+  }
+
   .browse-filter-primary {
     @apply flex flex-wrap items-center gap-2;
   }
@@ -1359,6 +1419,31 @@ body {
   }
 
   .browse-category-tabs button.is-active {
+    color: var(--accent);
+    background: var(--bg-secondary);
+    box-shadow: var(--shadow);
+  }
+
+  .browse-search-scope {
+    @apply flex items-center gap-1 rounded-md border p-0.5 pl-2;
+    border-color: color-mix(in srgb, var(--border) 78%, transparent);
+    background: var(--bg-primary);
+  }
+
+  .browse-search-scope span {
+    @apply mr-1;
+  }
+
+  .browse-search-scope button {
+    @apply rounded px-3 py-1.5 text-xs font-medium transition-colors;
+    color: var(--text-secondary);
+  }
+
+  .browse-search-scope button:hover {
+    color: var(--text-primary);
+  }
+
+  .browse-search-scope button.is-active {
     color: var(--accent);
     background: var(--bg-secondary);
     box-shadow: var(--shadow);
@@ -1467,6 +1552,58 @@ body {
   .browse-card:hover {
     transform: translateY(-2px);
     box-shadow: 0 4px 20px color-mix(in srgb, var(--accent) 12%, transparent);
+  }
+
+  .browse-entity-grid {
+    @apply grid gap-3 p-4;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  }
+
+  .browse-entity-card {
+    @apply flex min-h-[104px] items-center gap-3 rounded-lg border p-3 text-left transition-all duration-200;
+    border-color: var(--border);
+    background: var(--bg-secondary);
+  }
+
+  .browse-entity-card:hover {
+    border-color: var(--accent);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-md);
+  }
+
+  .browse-entity-card img,
+  .browse-entity-card > span {
+    @apply h-16 w-16 shrink-0 rounded-lg object-cover;
+  }
+
+  .browse-entity-card > span {
+    @apply inline-flex items-center justify-center text-lg font-bold;
+    background: var(--surface-subtle);
+    color: var(--text-secondary);
+  }
+
+  .browse-entity-card strong,
+  .browse-entity-card small,
+  .browse-entity-card p {
+    @apply block;
+  }
+
+  .browse-entity-card strong {
+    @apply line-clamp-1 text-sm font-semibold;
+    color: var(--text-primary);
+  }
+
+  .browse-entity-card small,
+  .browse-entity-card p {
+    color: var(--text-secondary);
+  }
+
+  .browse-entity-card small {
+    @apply mt-1 text-xs;
+  }
+
+  .browse-entity-card p {
+    @apply mt-1 line-clamp-2 text-xs leading-5;
   }
 
   /* Skeleton */
@@ -1703,6 +1840,39 @@ body {
 
   .bangumi-collection-strip strong {
     @apply mt-0.5 block text-sm font-semibold tabular-nums;
+  }
+
+  .bangumi-score-overview {
+    @apply overflow-hidden;
+  }
+
+  .bangumi-score-layout {
+    @apply mb-4 grid gap-4 lg:grid-cols-[180px_minmax(0,1fr)];
+  }
+
+  .bangumi-score-main {
+    @apply rounded-lg border p-4;
+    border-color: var(--border);
+    background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 14%, transparent), var(--bg-primary));
+  }
+
+  .bangumi-score-main span,
+  .bangumi-score-main small {
+    @apply block;
+    color: var(--text-secondary);
+  }
+
+  .bangumi-score-main span {
+    @apply text-xs font-medium;
+  }
+
+  .bangumi-score-main strong {
+    @apply mt-1 block text-4xl font-bold tabular-nums;
+    color: var(--text-primary);
+  }
+
+  .bangumi-score-main small {
+    @apply mt-2 text-xs leading-5;
   }
 
   .rating-distribution {

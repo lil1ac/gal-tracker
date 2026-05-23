@@ -15,7 +15,7 @@ import { query } from '../services/database'
 import { canLaunchProcess, isGameLaunchAvailable, launchGameProcess } from '../services/launchService'
 import { formatDuration, type GameActionKey, getGameActionItems } from '../services/libraryStats'
 import { type DetailTab, getGameDetailTabs, getTabForGameAction } from './gameDetailTabs'
-import { createCharacterRoute, createCustomRoute, toggleRouteCompletion } from './gameRoutes'
+import { createCharacterRoute, createCustomRoute, normalizeTagInput, toggleRouteCompletion } from './gameRoutes'
 import { RecordsPanel, STATUS_OPTIONS, type RouteInputMode, parseLocalDate, toDateInput } from './RecordsPanel'
 import { ProcessConfig } from './ProcessConfig'
 import { BangumiEntityDetailPanel, type BangumiEntityTarget } from './BangumiEntityDetailPanel'
@@ -40,6 +40,8 @@ const collectionLabels = [
   ['on_hold', '搁置'],
   ['dropped', '抛弃'],
 ] as const
+
+const EPISODE_PAGE_SIZE = 18
 
 function formatScore(score: number | null) {
   return score === null ? '-' : score.toFixed(1)
@@ -106,6 +108,78 @@ function RatingDistribution({ rating }: { rating: NonNullable<BangumiSnapshot['m
   )
 }
 
+function CleanRatingDistribution({ rating }: { rating: NonNullable<BangumiSnapshot['meta']>['rating'] }) {
+  const entries = Array.from({ length: 10 }, (_, index) => {
+    const score = index + 1
+    return { label: String(score), count: Number(rating.count[String(score)] || 0) }
+  })
+  const maxCount = Math.max(...entries.map(entry => entry.count), 1)
+  return (
+    <div className="rating-distribution">
+      <div className="rating-distribution-head">
+        <span>评分分布</span>
+        <span>共 {rating.total.toLocaleString()} 人评分</span>
+      </div>
+      <div className="rating-distribution-bars">
+        {entries.map(entry => {
+          const pct = Math.max(3, Math.round((entry.count / maxCount) * 100))
+          return (
+            <div key={entry.label} className="rating-bar-row">
+              <span className="rating-bar-label">{entry.label}</span>
+              <div className="rating-bar-track">
+                <div className="rating-bar-fill" style={{ width: `${pct}%` } as CSSProperties} />
+              </div>
+              <span className="rating-bar-count">{entry.count}</span>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+const scoreCollectionLabels = [
+  ['wish', '想玩'],
+  ['doing', '在玩'],
+  ['collect', '完成'],
+  ['on_hold', '搁置'],
+  ['dropped', '抛弃'],
+] as const
+
+function BangumiScoreOverview({ meta }: { meta: NonNullable<BangumiSnapshot['meta']> }) {
+  const collectionTotal = getBangumiCollectionTotal(meta.collection)
+  return (
+    <section className="bangumi-section bangumi-score-overview">
+      <div className="bangumi-section-head">
+        <div>
+          <h3>Bangumi 评分概览</h3>
+          <span>平均分、排名和收藏状态集中展示，便于快速判断作品口碑。</span>
+        </div>
+      </div>
+      <div className="bangumi-score-layout">
+        <div className="bangumi-score-main">
+          <span>平均分</span>
+          <strong>{formatScore(meta.score)}</strong>
+          <small>{meta.rating.total.toLocaleString()} 人评分{meta.rank ? ` · Rank #${meta.rank}` : ''}</small>
+        </div>
+        <div className="bangumi-collection-strip">
+          {scoreCollectionLabels.map(([key, label]) => (
+            <span key={key} className={`collection-chip${key === 'collect' ? ' is-collect' : ''}`}>
+              <span>{label}</span>
+              <strong>{meta.collection[key].toLocaleString()}</strong>
+            </span>
+          ))}
+          <span className="collection-chip">
+            <span>收藏总数</span>
+            <strong>{collectionTotal.toLocaleString()}</strong>
+          </span>
+        </div>
+      </div>
+      <CleanRatingDistribution rating={meta.rating} />
+    </section>
+  )
+}
+
 export function GameDetailPage({
   game: gameProp,
   snapshot: snapshotProp,
@@ -156,6 +230,7 @@ export function GameDetailPage({
   const [addError, setAddError] = useState('')
   const [syncPrivate, setSyncPrivate] = useState(false)
   const [syncMessage, setSyncMessage] = useState('')
+  const [episodePage, setEpisodePage] = useState(0)
 
   // Delete
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
@@ -202,6 +277,7 @@ export function GameDetailPage({
   // Reset didLoadBangumi when game changes
   useEffect(() => {
     didLoadBangumi.current = false
+    setEpisodePage(0)
   }, [activeGame?.id])
 
   // Load launch process
@@ -243,16 +319,18 @@ export function GameDetailPage({
   }, [highlight])
 
   // Register header override for library-mode entity/related navigation
+  const handleEntityBack = useCallback(() => setEntityTarget(null), [])
+  const handleRelatedBack = useCallback(() => setRelatedSnapshot(null), [])
   const pageHeaderState = useMemo((): Parameters<typeof usePageHeaderOverride>[0] => {
     if (entityTarget) {
-      return { title: entityTarget.title, onBack: () => setEntityTarget(null) }
+      return { title: entityTarget.title, onBack: handleEntityBack }
     }
     if (relatedSnapshot?.meta) {
       const title = relatedSnapshot.meta.title_cn || relatedSnapshot.meta.title || '相关游戏'
-      return { title, onBack: () => setRelatedSnapshot(null) }
+      return { title, onBack: handleRelatedBack }
     }
     return null
-  }, [entityTarget, relatedSnapshot])
+  }, [entityTarget, relatedSnapshot, handleEntityBack, handleRelatedBack])
   usePageHeaderOverride(pageHeaderState, [pageHeaderState])
 
   // Derived
@@ -269,8 +347,21 @@ export function GameDetailPage({
   }, [gameSessions])
   const completedRoutes = activeGame ? activeGame.routes.filter(route => route.completed_at).length : 0
   const actionItems = useMemo(() => activeGame ? getGameActionItems(activeGame) : [], [activeGame])
-  const tabs = useMemo(() => activeGame ? getGameDetailTabs(activeGame) : [], [activeGame])
+  const tabs = useMemo(() => {
+    if (activeGame) return getGameDetailTabs(activeGame)
+    if (currentMeta) return [
+      { key: 'detail' as DetailTab, label: '作品详情' },
+      { key: 'community' as DetailTab, label: 'Bangumi 社区' },
+    ]
+    return []
+  }, [activeGame, currentMeta])
   const canLaunch = useMemo(() => launchProcess ? canLaunchProcess(launchProcess) && isGameLaunchAvailable() : false, [launchProcess])
+
+  useEffect(() => {
+    if (tabs.length > 0 && !tabs.some(tab => tab.key === activeTab)) {
+      setActiveTab('detail')
+    }
+  }, [tabs, activeTab])
 
   // Bangumi display data
   const collectionTotal = currentMeta ? getBangumiCollectionTotal(currentMeta.collection) : 0
@@ -284,7 +375,9 @@ export function GameDetailPage({
     return getFeaturedStaff(persons, 10)
   }, [bangumiSnapshot?.persons, snapshotProp?.persons])
   const relations = (bangumiSnapshot?.relations || snapshotProp?.relations || []).slice(0, 6)
-  const episodes = (bangumiSnapshot?.episodes || snapshotProp?.episodes || []).slice(0, 18)
+  const allEpisodes = bangumiSnapshot?.episodes || snapshotProp?.episodes || []
+  const episodeTotalPages = Math.max(1, Math.ceil(allEpisodes.length / EPISODE_PAGE_SIZE))
+  const episodes = allEpisodes.slice(episodePage * EPISODE_PAGE_SIZE, episodePage * EPISODE_PAGE_SIZE + EPISODE_PAGE_SIZE)
   const allCharacters = bangumiSnapshot?.characters || snapshotProp?.characters || []
 
   // Handlers
@@ -418,7 +511,7 @@ export function GameDetailPage({
     setSyncMessage('')
     try {
       await patchMyCollection(subjectId, buildCollectionPayload(activeGame, syncPrivate))
-      setSyncMessage('已同步到 Bangumi 收藏')
+      setSyncMessage('已同步到 Bangumi 收藏，Bangumi 条目页的标记更新时间也会刷新')
     } catch (error) {
       setSyncMessage(error instanceof Error ? error.message : '同步到 Bangumi 失败，请检查 Access Token')
     } finally {
@@ -518,6 +611,9 @@ export function GameDetailPage({
             <div className="flex flex-wrap items-center gap-2 mt-3">
               {currentMeta && (
                 <a href={currentMeta.url} target="_blank" rel="noopener noreferrer" className="btn btn-secondary btn-sm">Bangumi</a>
+              )}
+              {currentMeta && (
+                <a href={`https://bgm.tv/subject/${currentMeta.subject_id}/edit_detail`} target="_blank" rel="noopener noreferrer" className="btn btn-secondary btn-sm">资料修订历史</a>
               )}
               {isInLibrary && activeGame && (
                 confirmDelete === 'game' ? (
@@ -642,7 +738,7 @@ export function GameDetailPage({
         </section>
 
         {/* Distribution - always visible when meta available */}
-        {currentMeta && (
+        {false && currentMeta ? (
           <section className="bangumi-section">
             <div className="bangumi-section-head">
               <h3>分布</h3>
@@ -651,16 +747,16 @@ export function GameDetailPage({
               {collectionLabels.map(([key, label]) => (
                 <span key={key} className={`collection-chip${key === 'collect' ? ' is-collect' : ''}`}>
                   <span>{label}</span>
-                  <strong>{currentMeta.collection[key].toLocaleString()}</strong>
+                  <strong>{currentMeta!.collection[key].toLocaleString()}</strong>
                 </span>
               ))}
             </div>
-            <RatingDistribution rating={currentMeta.rating} />
+            <RatingDistribution rating={currentMeta!.rating} />
           </section>
-        )}
+        ) : null}
 
-        {/* Tab bar - only when in library */}
-        {isInLibrary && activeGame && (
+        {/* Tab bar */}
+        {tabs.length > 0 && (
           <>
             <TabBar tabs={tabs} activeTab={activeTab} onSelect={setActiveTab} />
             {actionItems.length > 0 && activeTab === 'records' && (
@@ -680,6 +776,20 @@ export function GameDetailPage({
         {!isInLibrary ? (
           // Browse mode: show detail content directly
           <>
+            {activeTab === 'community' && currentMeta && (
+              <BangumiCommentsPanel
+                target={{
+                  kind: 'subject',
+                  id: currentMeta.subject_id,
+                  title: currentMeta.title_cn || currentMeta.title || '游戏详情',
+                }}
+              />
+            )}
+
+            {activeTab === 'detail' && currentMeta && <BangumiScoreOverview meta={currentMeta} />}
+
+            {activeTab === 'detail' && (
+              <>
             {currentMeta?.summary && (
               <section className="bangumi-section">
                 <div className="bangumi-section-head">
@@ -774,14 +884,21 @@ export function GameDetailPage({
               <section className="bangumi-section">
                 <div className="bangumi-section-head">
                   <h3>章节/路线参考</h3>
-                  <span>显示前 {episodes.length} 条</span>
+                  <span>第 {episodePage + 1} / {episodeTotalPages} 页，共 {allEpisodes.length} 条</span>
                 </div>
                 <div className="bangumi-episode-list">
                   {episodes.map(episode => (
                     <span key={episode.id}>{episode.name_cn || episode.name || `#${episode.sort}`}</span>
                   ))}
                 </div>
+                <div className="bangumi-comment-pagination">
+                  <button type="button" className="btn btn-secondary btn-sm" disabled={episodePage === 0} onClick={() => setEpisodePage(page => Math.max(0, page - 1))}>上一页</button>
+                  <span>{episodePage + 1} / {episodeTotalPages}</span>
+                  <button type="button" className="btn btn-secondary btn-sm" disabled={episodePage + 1 >= episodeTotalPages} onClick={() => setEpisodePage(page => Math.min(episodeTotalPages - 1, page + 1))}>下一页</button>
+                </div>
               </section>
+            )}
+              </>
             )}
           </>
         ) : activeGame ? (
@@ -789,6 +906,8 @@ export function GameDetailPage({
           <>
             {activeTab === 'detail' && currentMeta && (
               <>
+                <BangumiScoreOverview meta={currentMeta} />
+
                 {currentMeta.summary && (
                   <section className="bangumi-section">
                     <div className="bangumi-section-head">
@@ -883,16 +1002,31 @@ export function GameDetailPage({
                   <section className="bangumi-section">
                     <div className="bangumi-section-head">
                       <h3>章节/路线参考</h3>
-                      <span>显示前 {episodes.length} 条</span>
+                      <span>第 {episodePage + 1} / {episodeTotalPages} 页，共 {allEpisodes.length} 条</span>
                     </div>
                     <div className="bangumi-episode-list">
                       {episodes.map(episode => (
                         <span key={episode.id}>{episode.name_cn || episode.name || `#${episode.sort}`}</span>
                       ))}
                     </div>
+                    <div className="bangumi-comment-pagination">
+                      <button type="button" className="btn btn-secondary btn-sm" disabled={episodePage === 0} onClick={() => setEpisodePage(page => Math.max(0, page - 1))}>上一页</button>
+                      <span>{episodePage + 1} / {episodeTotalPages}</span>
+                      <button type="button" className="btn btn-secondary btn-sm" disabled={episodePage + 1 >= episodeTotalPages} onClick={() => setEpisodePage(page => Math.min(episodeTotalPages - 1, page + 1))}>下一页</button>
+                    </div>
                   </section>
                 )}
               </>
+            )}
+
+            {activeTab === 'community' && currentMeta && (
+              <BangumiCommentsPanel
+                target={{
+                  kind: 'subject',
+                  id: currentMeta.subject_id,
+                  title: currentMeta.title_cn || currentMeta.title || '游戏详情',
+                }}
+              />
             )}
 
             {activeTab === 'records' && activeGame && (
@@ -912,7 +1046,7 @@ export function GameDetailPage({
                 onReviewDraft={setReviewDraft}
                 onSaveReview={review => updateGame(activeGame.id, { review })}
                 onTagDraft={setTagDraft}
-                onSaveTags={tags => updateGame(activeGame.id, { tags: tags.split(',').map(t => t.trim()).filter(Boolean) })}
+                onSaveTags={tags => updateGame(activeGame.id, { tags: normalizeTagInput(tags) })}
                 onCompletedDate={handleCompletedDate}
                 onClearCompletedDate={() => {
                   setCompletedAtDraft('')
@@ -937,22 +1071,22 @@ export function GameDetailPage({
           </>
         ) : null}
 
-        {currentMeta && (
+        {false && currentMeta ? (
           <BangumiCommentsPanel
             target={{
               kind: 'subject',
-              id: currentMeta.subject_id,
-              title: currentMeta.title_cn || currentMeta.title || '游戏详情',
+              id: currentMeta!.subject_id,
+              title: currentMeta!.title_cn || currentMeta!.title || '游戏详情',
             }}
           />
-        )}
+        ) : null}
 
-        {isInLibrary && (
+        {isInLibrary && activeTab === 'detail' && (
           <section className="bangumi-section mt-6">
             <div className="bangumi-section-head">
               <div>
                 <h3>Bangumi 同步</h3>
-                <span>刷新条目资料，或把本地状态、评分、短评和标签同步到 Bangumi 收藏。</span>
+                <span>刷新条目资料，或把本地状态、评分、短评和标签同步到 Bangumi 收藏；同步会刷新 Bangumi 条目页标记更新时间。</span>
               </div>
             </div>
             <div className="bangumi-sync-actions">
@@ -1004,40 +1138,6 @@ export function GameDetailPage({
           </section>
         )}
 
-        {/* Bangumi refresh toolbar for library mode */}
-        {false && isInLibrary && (
-          <section className="bangumi-section mt-6">
-            <div className="bangumi-section-head">
-              <h3>Bangumi 资料刷新</h3>
-            </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <button type="button" onClick={() => loadBangumi('refresh')} disabled={!!bangumiBusy} className="btn btn-primary btn-sm">
-                {bangumiBusy === 'refresh' ? '刷新中...' : '刷新 Bangumi 资料'}
-              </button>
-              <button
-                type="button"
-                onClick={async () => {
-                  if (!currentMeta || !activeGame) return
-                  setBangumiBusy('apply')
-                  try {
-                    await updateGame(activeGame.id, {
-                      name: currentMeta.title || activeGame.name,
-                      name_cn: currentMeta.title_cn || activeGame.name_cn,
-                      cover_url: currentMeta.cover_url || activeGame.cover_url,
-                      air_date: currentMeta.air_date || activeGame.air_date,
-                      platform: currentMeta.platform.length > 0 ? currentMeta.platform : activeGame.platform,
-                    })
-                  } catch { /* ignore */ }
-                  finally { setBangumiBusy('') }
-                }}
-                disabled={!!bangumiBusy}
-                className="btn btn-secondary btn-sm"
-              >
-                应用到本地
-              </button>
-            </div>
-          </section>
-        )}
       </div>
     </div>
   )
